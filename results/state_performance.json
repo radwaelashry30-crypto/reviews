@@ -1,0 +1,96 @@
+{
+  "generated_at": "2026-08-04T16:30:16.205582+00:00",
+  "schema_version": "1.0",
+  "records": [
+    {
+      "customer_state_name": "Alagoas",
+      "Late": 85,
+      "On time": 312,
+      "late_pct": 21.41057934508816
+    },
+    {
+      "customer_state_name": "Maranh\u00e3o",
+      "Late": 125,
+      "On time": 592,
+      "late_pct": 17.433751743375176
+    },
+    {
+      "customer_state_name": "Sergipe",
+      "Late": 51,
+      "On time": 284,
+      "late_pct": 15.223880597014924
+    },
+    {
+      "customer_state_name": "Piau\u00ed",
+      "Late": 66,
+      "On time": 410,
+      "late_pct": 13.865546218487395
+    },
+    {
+      "customer_state_name": "Cear\u00e1",
+      "Late": 176,
+      "On time": 1103,
+      "late_pct": 13.76075058639562
+    },
+    {
+      "customer_state_name": "Roraima",
+      "Late": 5,
+      "On time": 36,
+      "late_pct": 12.195121951219512
+    },
+    {
+      "customer_state_name": "Bahia",
+      "Late": 396,
+      "On time": 2860,
+      "late_pct": 12.162162162162163
+    },
+    {
+      "customer_state_name": "Rio de Janeiro",
+      "Late": 1495,
+      "On time": 10858,
+      "late_pct": 12.102323322269894
+    },
+    {
+      "customer_state_name": "Par\u00e1",
+      "Late": 106,
+      "On time": 840,
+      "late_pct": 11.20507399577167
+    },
+    {
+      "customer_state_name": "Esp\u00edrito Santo",
+      "Late": 214,
+      "On time": 1781,
+      "late_pct": 10.726817042606516
+    },
+    {
+      "customer_state_name": "Para\u00edba",
+      "Late": 54,
+      "On time": 463,
+      "late_pct": 10.444874274661508
+    },
+    {
+      "customer_state_name": "Tocantins",
+      "Late": 27,
+      "On time": 247,
+      "late_pct": 9.854014598540147
+    },
+    {
+      "customer_state_name": "Mato Grosso do Sul",
+      "Late": 68,
+      "On time": 633,
+      "late_pct": 9.700427960057063
+    },
+    {
+      "customer_state_name": "Pernambuco",
+      "Late": 153,
+      "On time": 1440,
+      "late_pct": 9.6045197740113
+    },
+    {
+      "customer_state_name": "Rio Grande do Norte",
+      "Late": 44,
+      "On time": 430,
+      "late_pct": 9.282700421940929
+    }
+  ]
+}

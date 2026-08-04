@@ -1,0 +1,26 @@
+{
+  "project_name": "Olist Marketplace Analytics and Customer Sentiment Intelligence Platform",
+  "random_seed": 42,
+  "primary_sentiment_model": "bert",
+  "label_mapping": {"Negative": 0, "Positive": 1},
+  "excluded_review_scores": [3],
+  "translation": {
+    "actual_model_used": "Helsinki-NLP/opus-mt-ROMANCE-en",
+    "configured_but_unused_model": "Helsinki-NLP/opus-mt-pt-en",
+    "note": "The notebook's Configuration cell set opus-mt-pt-en, but the translation cell that actually ran overwrote it to opus-mt-ROMANCE-en before loading the model; the execution log confirms ROMANCE-en was the model that produced reviews_translated.csv."
+  },
+  "data_grain": {
+    "orders_enriched": "one row per order_id",
+    "order_items_enriched": "one row per order item",
+    "reviews_enriched": "one row per review_id",
+    "customers_enriched": "one row per customer_unique_id",
+    "sellers_enriched": "one row per seller_id",
+    "legacy_order_item_merged": "notebook-reproduction only; DO NOT use for order-level KPIs"
+  },
+  "paths": {
+    "models_dir": "models",
+    "artifacts_dir": "artifacts",
+    "data_dir": "data",
+    "results_dir": "results"
+  }
+}

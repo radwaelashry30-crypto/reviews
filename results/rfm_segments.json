@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-08-04T18:04:42.844274+00:00",
+  "schema_version": "1.0",
+  "cluster_label_map": {
+    "2": "Champion",
+    "3": "Loyal Customer",
+    "1": "Potential Loyal",
+    "0": "At Risk"
+  },
+  "segment_summary": [
+    {
+      "Segment": "At Risk",
+      "Recency": 438.81,
+      "Frequency": 1.0,
+      "Monetary": 134.9199981689453,
+      "customer_count": 38656
+    },
+    {
+      "Segment": "Champion",
+      "Recency": 289.49,
+      "Frequency": 1.02,
+      "Monetary": 1196.22998046875,
+      "customer_count": 2422
+    },
+    {
+      "Segment": "Loyal Customer",
+      "Recency": 269.31,
+      "Frequency": 2.12,
+      "Monetary": 290.30999755859375,
+      "customer_count": 2962
+    },
+    {
+      "Segment": "Potential Loyal",
+      "Recency": 178.36,
+      "Frequency": 1.0,
+      "Monetary": 135.16000366210938,
+      "customer_count": 52056
+    }
+  ],
+  "n_customers": 96096
+}

@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-08-04T16:52:20.526007+00:00",
+  "schema_version": "1.0",
+  "dedupe_report": {
+    "rows_before": 38060,
+    "rows_after": 31484,
+    "duplicate_groups": 1215,
+    "conflicting_label_groups": 76,
+    "conflicting_label_rows_dropped": 2381
+  },
+  "split_overlap": {
+    "index_overlap": {
+      "train_val": 0,
+      "train_test": 0,
+      "val_test": 0
+    },
+    "raw_text_overlap": {
+      "train_val": 0,
+      "train_test": 0,
+      "val_test": 0
+    },
+    "normalized_text_overlap": {
+      "train_val": 0,
+      "train_test": 0,
+      "val_test": 0
+    },
+    "sizes": {
+      "train": 22038,
+      "val": 3149,
+      "test": 6297
+    }
+  }
+}

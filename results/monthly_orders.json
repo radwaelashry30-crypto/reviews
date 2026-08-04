@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-08-04T16:30:16.059709+00:00",
+  "schema_version": "1.0",
+  "records": [
+    {
+      "order_year_month": "2016-09",
+      "order_count": 3
+    },
+    {
+      "order_year_month": "2016-10",
+      "order_count": 308
+    },
+    {
+      "order_year_month": "2016-12",
+      "order_count": 1
+    },
+    {
+      "order_year_month": "2017-01",
+      "order_count": 789
+    },
+    {
+      "order_year_month": "2017-02",
+      "order_count": 1733
+    },
+    {
+      "order_year_month": "2017-03",
+      "order_count": 2641
+    },
+    {
+      "order_year_month": "2017-04",
+      "order_count": 2391
+    },
+    {
+      "order_year_month": "2017-05",
+      "order_count": 3660
+    },
+    {
+      "order_year_month": "2017-06",
+      "order_count": 3217
+    },
+    {
+      "order_year_month": "2017-07",
+      "order_count": 3969
+    },
+    {
+      "order_year_month": "2017-08",
+      "order_count": 4293
+    },
+    {
+      "order_year_month": "2017-09",
+      "order_count": 4243
+    },
+    {
+      "order_year_month": "2017-10",
+      "order_count": 4568
+    },
+    {
+      "order_year_month": "2017-11",
+      "order_count": 7451
+    },
+    {
+      "order_year_month": "2017-12",
+      "order_count": 5624
+    },
+    {
+      "order_year_month": "2018-01",
+      "order_count": 7220
+    },
+    {
+      "order_year_month": "2018-02",
+      "order_count": 6694
+    },
+    {
+      "order_year_month": "2018-03",
+      "order_count": 7188
+    },
+    {
+      "order_year_month": "2018-04",
+      "order_count": 6934
+    },
+    {
+      "order_year_month": "2018-05",
+      "order_count": 6853
+    },
+    {
+      "order_year_month": "2018-06",
+      "order_count": 6160
+    },
+    {
+      "order_year_month": "2018-07",
+      "order_count": 6273
+    },
+    {
+      "order_year_month": "2018-08",
+      "order_count": 6452
+    },
+    {
+      "order_year_month": "2018-09",
+      "order_count": 1
+    }
+  ]
+}

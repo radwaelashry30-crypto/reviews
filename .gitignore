@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Env files
+.env
+.env.local
+frontend/.env
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Not required for the running app (backend/frontend never load these at
+# runtime -- only offline scripts like run_pipeline.py/train.py/evaluate.py
+# do). Kept locally on disk; excluded from git to keep the repo/LFS quota
+# usable. Re-download/regenerate via data/README.md if you need them.
+data/raw/
+data/interim/
+notebooks/*.ipynb
+output/
+results/rfm_cluster_summary.csv
+
+# Orphaned duplicate of data/processed/orders_enriched.parquet et al.
+data/processed/olist_cleaned_dataset.parquet
+
+# Do NOT ignore genuine final model artifacts -- they are the deliverable
+# the running app actually loads. models/, artifacts/, data/processed/*_enriched.parquet
+# and results/*.json are intentionally tracked via Git LFS (see .gitattributes).
+
+# Redundant, purely duplicate copies of what's already tracked above
+# (raw per-epoch BERT checkpoints not used by any production code path,
+# plus duplicate notebooks/outputs) -- preserved locally on disk, not pushed
+# to keep the repo/LFS quota usable. Ask to include if you really want it in git.
+original_project_backup/
+
+# Local zip export of this project
+/../*.zip
+Olist_Marketplace_Platform.zip

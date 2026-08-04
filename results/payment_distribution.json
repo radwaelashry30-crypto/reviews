@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-08-04T16:30:16.152907+00:00",
+  "schema_version": "1.0",
+  "records": {
+    "credit_card": 74767,
+    "boleto": 19614,
+    "voucher": 2764,
+    "debit_card": 1520,
+    "not_defined": 1
+  }
+}

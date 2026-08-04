@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-08-04T18:03:13.537987+00:00",
+  "schema_version": "1.0",
+  "grain": "orders_enriched (one row per unique order_id, includes orders with no order_items row) unless noted",
+  "total_unique_orders": 99441,
+  "total_unique_customers": 96096,
+  "total_unique_sellers": 3095,
+  "total_order_payment_revenue_delivered": 15422462.0,
+  "total_item_revenue": 13591643.0,
+  "avg_review_score": 4.071234869587662,
+  "late_delivery_rate_pct": 6.571736004263835,
+  "repeat_customer_rate_pct": 3.1187562437562435,
+  "order_status_distribution": {
+    "delivered": 96478,
+    "shipped": 1107,
+    "canceled": 625,
+    "unavailable": 609,
+    "invoiced": 314,
+    "processing": 301,
+    "created": 5,
+    "approved": 2
+  }
+}

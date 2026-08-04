@@ -1,0 +1,156 @@
+{
+  "generated_at": "2026-08-04T16:54:12.911880+00:00",
+  "schema_version": "1.0",
+  "methodology": "Both models evaluated via genuine forward-pass inference (no retraining) using their saved checkpoints (models/bert_review_sentiment/, models/cnn2d_review_sentiment.pt) on a corrected, deduplicated, leakage-free 70/10/20 split (see DATA_LEAKAGE_AUDIT.md and artifacts/split_manifest.json). BERT uses its own saved tokenizer (encodes any raw text, no retraining dependency). CNN2D uses its ORIGINAL paired tokenizer (artifacts/cnn2d_tokenizer.pkl) rather than a freshly refit one, because its embedding weights are indexed to that exact vocabulary -- pairing them with a different tokenizer breaks the model (verified: accuracy collapses to ~0.59, near chance, when a freshly-refit tokenizer is used instead). A genuinely retrained CNN2D on the corrected split would need fresh weights AND a fresh tokenizer together; see train.py.",
+  "seed": 42,
+  "split_sizes": {
+    "train": 22038,
+    "val": 3149,
+    "test": 6297
+  },
+  "bert": {
+    "val": {
+      "accuracy": 0.9333121625912988,
+      "precision_macro": 0.9243179279711906,
+      "recall_macro": 0.9273784743645287,
+      "f1_macro": 0.9258161136164771,
+      "roc_auc": 0.9770484102972423,
+      "pr_auc": 0.9884498640201493,
+      "mcc": 0.8516909033254856,
+      "loss": null,
+      "n_samples": 3149
+    },
+    "test": {
+      "accuracy": 0.9344132126409401,
+      "precision_macro": 0.9254159650933319,
+      "recall_macro": 0.9287703207548402,
+      "f1_macro": 0.9270547022766528,
+      "roc_auc": 0.9754843740742302,
+      "pr_auc": 0.9865576605447584,
+      "mcc": 0.8541796996119676,
+      "loss": null,
+      "n_samples": 6297
+    },
+    "confusion_matrix_test": {
+      "labels": [
+        "Negative",
+        "Positive"
+      ],
+      "matrix": [
+        [
+          1942,
+          189
+        ],
+        [
+          224,
+          3942
+        ]
+      ],
+      "true_negative": 1942,
+      "false_positive": 189,
+      "false_negative": 224,
+      "true_positive": 3942
+    },
+    "classification_report_test": {
+      "Negative": {
+        "precision": 0.8965835641735919,
+        "recall": 0.9113092444861567,
+        "f1-score": 0.903886432394694,
+        "support": 2131.0
+      },
+      "Positive": {
+        "precision": 0.954248366013072,
+        "recall": 0.9462313970235238,
+        "f1-score": 0.9502229721586115,
+        "support": 4166.0
+      },
+      "accuracy": 0.9344132126409401,
+      "macro avg": {
+        "precision": 0.9254159650933319,
+        "recall": 0.9287703207548402,
+        "f1-score": 0.9270547022766528,
+        "support": 6297.0
+      },
+      "weighted avg": {
+        "precision": 0.9347337252762239,
+        "recall": 0.9344132126409401,
+        "f1-score": 0.9345419865723151,
+        "support": 6297.0
+      }
+    },
+    "eval_time_seconds": 110.96714925765991
+  },
+  "cnn2d": {
+    "val": {
+      "accuracy": 0.9231502064147349,
+      "precision_macro": 0.9074777270682555,
+      "recall_macro": 0.9316054921507892,
+      "f1_macro": 0.9168782728052516,
+      "roc_auc": 0.9771472628866399,
+      "pr_auc": 0.9889733708783506,
+      "mcc": 0.8387362515875401,
+      "loss": null,
+      "n_samples": 3149
+    },
+    "test": {
+      "accuracy": 0.9221851675400985,
+      "precision_macro": 0.9063823308432786,
+      "recall_macro": 0.9309900846453593,
+      "f1_macro": 0.915887751107583,
+      "roc_auc": 0.9770002430797188,
+      "pr_auc": 0.9878882582203039,
+      "mcc": 0.8370107649690609,
+      "loss": null,
+      "n_samples": 6297
+    },
+    "confusion_matrix_test": {
+      "labels": [
+        "Negative",
+        "Positive"
+      ],
+      "matrix": [
+        [
+          2042,
+          89
+        ],
+        [
+          401,
+          3765
+        ]
+      ],
+      "true_negative": 2042,
+      "false_positive": 89,
+      "false_negative": 401,
+      "true_positive": 3765
+    },
+    "classification_report_test": {
+      "Negative": {
+        "precision": 0.8358575521899304,
+        "recall": 0.9582355701548568,
+        "f1-score": 0.8928727590730214,
+        "support": 2131.0
+      },
+      "Positive": {
+        "precision": 0.9769071094966268,
+        "recall": 0.9037445991358617,
+        "f1-score": 0.9389027431421446,
+        "support": 4166.0
+      },
+      "accuracy": 0.9221851675400985,
+      "macro avg": {
+        "precision": 0.9063823308432786,
+        "recall": 0.9309900846453593,
+        "f1-score": 0.915887751107583,
+        "support": 6297.0
+      },
+      "weighted avg": {
+        "precision": 0.929173806873065,
+        "recall": 0.9221851675400985,
+        "f1-score": 0.9233255006375708,
+        "support": 6297.0
+      }
+    },
+    "eval_time_seconds": 0.4095761775970459,
+    "vocab_size": 8202
+  }
+}

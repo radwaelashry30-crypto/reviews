@@ -1,0 +1,21 @@
+{
+  "base_checkpoint": "LiYuan/amazon-review-sentiment-analysis",
+  "architecture": "BertForSequenceClassification (bert-base-multilingual-uncased, NOT DistilBERT)",
+  "num_labels": 2,
+  "ignore_mismatched_sizes": true,
+  "max_length": 128,
+  "batch_size": 8,
+  "epochs": 3,
+  "learning_rate": 2e-5,
+  "weight_decay": 0.01,
+  "early_stopping_patience": 2,
+  "warmup_ratio": 0.10,
+  "optimizer": "AdamW",
+  "scheduler": "linear_schedule_with_warmup",
+  "max_grad_norm": 1.0,
+  "random_seed": 42,
+  "label_mapping": {"Negative": 0, "Positive": 1},
+  "artifact_path": "models/bert_review_sentiment",
+  "verified_vocab_size": 105879,
+  "source_artifact": "olist_full_eda_preprocessing_PYTORCH.ipynb cells 3, 124, 126, 136"
+}

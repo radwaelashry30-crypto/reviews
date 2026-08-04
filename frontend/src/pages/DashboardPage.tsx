@@ -1,0 +1,73 @@
+import { ErrorState } from "../components/ErrorState";
+import { KpiCard } from "../components/KpiCard";
+import { LoadingState } from "../components/LoadingState";
+import { OrdersTrendChart } from "../components/charts/OrdersTrendChart";
+import { RevenueTrendChart } from "../components/charts/RevenueTrendChart";
+import { ReviewDistributionChart } from "../components/charts/ReviewDistributionChart";
+import { SegmentChart } from "../components/charts/SegmentChart";
+import { useBusinessSummary, useMonthlyOrders, useMonthlyRevenue, useReviewDistribution } from "../hooks/useAnalytics";
+import { useRfmSummary } from "../hooks/useSegmentation";
+import { formatCurrency, formatNumber, formatPercent } from "../utils/formatters";
+
+export function DashboardPage() {
+  const summary = useBusinessSummary();
+  const monthlyOrders = useMonthlyOrders();
+  const monthlyRevenue = useMonthlyRevenue();
+  const reviewDist = useReviewDistribution();
+  const rfm = useRfmSummary();
+
+  return (
+    <div className="page">
+      <h1>Business Dashboard</h1>
+
+      {summary.loading && <LoadingState label="Loading KPIs..." />}
+      <ErrorState error={summary.error} />
+      {summary.data && (
+        <div className="kpi-grid">
+          <KpiCard label="Unique Orders" value={formatNumber(summary.data.total_unique_orders)} />
+          <KpiCard label="Customers" value={formatNumber(summary.data.total_unique_customers)} />
+          <KpiCard label="Sellers" value={formatNumber(summary.data.total_unique_sellers)} />
+          <KpiCard
+            label="Order Payment Revenue (delivered)"
+            value={formatCurrency(summary.data.total_order_payment_revenue_delivered)}
+          />
+          <KpiCard
+            label="Avg Review Score"
+            value={summary.data.avg_review_score ? summary.data.avg_review_score.toFixed(2) : "n/a"}
+          />
+          <KpiCard label="Late Delivery Rate" value={formatPercent(summary.data.late_delivery_rate_pct)} />
+        </div>
+      )}
+
+      <div className="chart-grid">
+        <section className="chart-card">
+          <h2>Monthly Orders</h2>
+          {monthlyOrders.loading && <LoadingState />}
+          <ErrorState error={monthlyOrders.error} />
+          {monthlyOrders.data && <OrdersTrendChart data={monthlyOrders.data} />}
+        </section>
+
+        <section className="chart-card">
+          <h2>Monthly Revenue</h2>
+          {monthlyRevenue.loading && <LoadingState />}
+          <ErrorState error={monthlyRevenue.error} />
+          {monthlyRevenue.data && <RevenueTrendChart data={monthlyRevenue.data} />}
+        </section>
+
+        <section className="chart-card">
+          <h2>Review Score Distribution</h2>
+          {reviewDist.loading && <LoadingState />}
+          <ErrorState error={reviewDist.error} />
+          {reviewDist.data && <ReviewDistributionChart data={reviewDist.data} />}
+        </section>
+
+        <section className="chart-card">
+          <h2>RFM Segments</h2>
+          {rfm.loading && <LoadingState />}
+          <ErrorState error={rfm.error} />
+          {rfm.data && <SegmentChart data={rfm.data.segment_summary} />}
+        </section>
+      </div>
+    </div>
+  );
+}

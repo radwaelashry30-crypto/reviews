@@ -1,0 +1,75 @@
+{
+  "source": "olist_full_eda_preprocessing_PYTORCH.ipynb, cells 136 and 138 (executed output, captured verbatim)",
+  "warning": "These are the ORIGINAL notebook run's numbers, exactly as printed. They are NOT leakage-free (see DATA_LEAKAGE_AUDIT.md) and BERT/CNN2D were evaluated on DIFFERENT test sets of different sizes (see MODEL_COMPARISON_AUDIT.md). Do not treat this file as corrected or directly comparable. See results/reproduced_metrics.json and results/fair_model_comparison.json for the corrected evaluation.",
+  "bert": {
+    "checkpoint": "LiYuan/amazon-review-sentiment-analysis",
+    "split_sizes": {"train": 5000, "val": 1000, "test": 2000},
+    "epochs_run": 3,
+    "training_time_seconds": 2004.63,
+    "test": {
+      "accuracy": 0.9275,
+      "precision_macro": 0.9101,
+      "recall_macro": 0.9169,
+      "f1_macro": 0.9134,
+      "roc_auc": 0.9716,
+      "pr_auc": 0.9878,
+      "mcc": 0.8270,
+      "loss": 0.2778
+    },
+    "validation": {
+      "accuracy": 0.9440,
+      "precision_macro": 0.9304,
+      "recall_macro": 0.9383,
+      "f1_macro": 0.9342,
+      "roc_auc": 0.9772,
+      "pr_auc": 0.9897,
+      "mcc": 0.8686,
+      "loss": 0.2274
+    },
+    "training": {
+      "accuracy": 0.9784,
+      "precision_macro": 0.9741,
+      "recall_macro": 0.9748,
+      "f1_macro": 0.9745,
+      "roc_auc": 0.9932,
+      "pr_auc": 0.9967,
+      "mcc": 0.9490,
+      "loss": 0.1091
+    }
+  },
+  "cnn2d": {
+    "split_sizes": {"train": 26642, "val": 3807, "test": 7613},
+    "epochs_run": 10,
+    "training_time_seconds": 154.8,
+    "test": {
+      "accuracy": 0.9192,
+      "precision_macro": 0.8954,
+      "recall_macro": 0.9241,
+      "f1_macro": 0.9074,
+      "roc_auc": 0.9717,
+      "pr_auc": 0.9872,
+      "mcc": 0.8190,
+      "loss": 0.2187
+    },
+    "validation": {
+      "accuracy": 0.9238,
+      "precision_macro": 0.9007,
+      "recall_macro": 0.9288,
+      "f1_macro": 0.9125,
+      "roc_auc": 0.9756,
+      "pr_auc": 0.9881,
+      "mcc": 0.8290,
+      "loss": 0.2145
+    },
+    "training": {
+      "accuracy": 0.9331,
+      "precision_macro": 0.9106,
+      "recall_macro": 0.9411,
+      "f1_macro": 0.9233,
+      "roc_auc": 0.9795,
+      "pr_auc": 0.9907,
+      "mcc": 0.8512,
+      "loss": 0.2257
+    }
+  }
+}

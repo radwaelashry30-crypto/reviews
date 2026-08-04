@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-08-04T18:03:14.657891+00:00",
+  "schema_version": "1.0",
+  "late_delivery": {
+    "n": 6535,
+    "mean": 2.2566947207345067,
+    "median": 1.0,
+    "std": 1.5651910976038501
+  },
+  "on_time_delivery": {
+    "n": 89941,
+    "mean": 4.279590694640561,
+    "median": 5.0,
+    "std": 1.1596142263872353
+  },
+  "welch_t_test": {
+    "statistic": -102.45587899206465,
+    "p_value": 0.0
+  },
+  "mann_whitney_u_test": {
+    "statistic": 106141863.5,
+    "p_value": 0.0
+  },
+  "effect_size_cohens_d": 1.4686207103115214,
+  "alpha": 0.05,
+  "statistically_significant": true
+}

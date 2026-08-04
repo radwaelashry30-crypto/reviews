@@ -1,0 +1,27 @@
+{
+  "source": "olist_full_eda_preprocessing_PYTORCH.ipynb, cell 140 (executed output, captured verbatim)",
+  "warning": "BERT was evaluated on a 2,000-row SUBSAMPLE of the original (non-deduplicated) test split; CNN2D was evaluated on the FULL 7,613-row original test split. This is NOT an apples-to-apples comparison. See results/fair_model_comparison.json for same-test-set metrics.",
+  "comparison": [
+    {
+      "model": "BERT (fine-tuned from LiYuan/amazon-review-sentiment-analysis)",
+      "test_set_size": 2000,
+      "test_accuracy": 0.9275,
+      "test_f1_macro": 0.9134,
+      "test_roc_auc": 0.9716,
+      "test_mcc": 0.8270,
+      "test_loss": 0.2778,
+      "training_time_seconds": 2004.6
+    },
+    {
+      "model": "CNN2D (from scratch)",
+      "test_set_size": 7613,
+      "test_accuracy": 0.9192,
+      "test_f1_macro": 0.9074,
+      "test_roc_auc": 0.9717,
+      "test_mcc": 0.8190,
+      "test_loss": 0.2187,
+      "training_time_seconds": 154.8
+    }
+  ],
+  "notebook_conclusion": "Based on test accuracy and macro F1, the notebook presents BERT as the primary model. CNN2D has a slightly higher reported ROC-AUC. This conclusion was reached WITHOUT disclosing the test-set-size/composition mismatch."
+}

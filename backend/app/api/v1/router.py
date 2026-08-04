@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from app.api.v1.endpoints import (
+    analytics, customers, geography, health, models, products, segmentation, sellers, sentiment,
+)
+
+api_router = APIRouter()
+api_router.include_router(health.router)
+api_router.include_router(models.router)
+api_router.include_router(sentiment.router)
+api_router.include_router(analytics.router)
+api_router.include_router(customers.router)
+api_router.include_router(sellers.router)
+api_router.include_router(products.router)
+api_router.include_router(geography.router)
+api_router.include_router(segmentation.router)

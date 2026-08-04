@@ -1,0 +1,8 @@
+# Root convenience file -- installs the backend's full dependency set.
+# See backend/requirements.txt for the authoritative list, and README.md for
+# CPU vs GPU PyTorch install instructions.
+-r backend/requirements.txt
+
+# Optional, only needed if you plan to open/run the original notebook:
+# jupyter
+# ipywidgets

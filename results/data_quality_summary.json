@@ -1,0 +1,38 @@
+{
+  "source": "olist_full_eda_preprocessing_PYTORCH.ipynb cells 28-45 (executed output, captured verbatim) + verified against output/olist_cleaned_dataset.parquet",
+  "duplicate_rows_removed": {
+    "customers": 0, "geolocation": 261831, "items": 0, "payments": 0,
+    "reviews": 0, "orders": 0, "products": 0, "sellers": 0, "translation": 0
+  },
+  "missing_values_before_treatment": {
+    "reviews": {"review_comment_title": 88289, "review_comment_message": 58275},
+    "orders": {"order_approved_at": 160, "order_delivered_carrier_date": 1783, "order_delivered_customer_date": 2965},
+    "products": {"product_category_name": 610, "product_name_lenght": 610, "product_description_lenght": 610, "product_photos_qty": 610, "product_weight_g": 2, "product_length_cm": 2, "product_height_cm": 2, "product_width_cm": 2}
+  },
+  "missing_values_after_merge_before_fix": {
+    "order_approved_at": 161, "order_delivered_carrier_date": 1968, "order_delivered_customer_date": 3229,
+    "order_item_id": 775, "product_id": 775, "seller_id": 775, "total_payment_value": 3,
+    "main_payment_type": 3, "payment_installments": 3, "product_category_name_english": 2402
+  },
+  "missing_values_after_fix": {
+    "order_approved_at": 15, "order_delivered_carrier_date": 1194, "order_delivered_customer_date": 2454,
+    "note": "Remaining NaT delivery dates are genuine (canceled/undelivered orders), deliberately NOT imputed."
+  },
+  "geolocation_compression": {"original_rows": 738332, "compressed_rows": 19015, "reduction_pct": 97.4},
+  "memory_optimization_mb": {"before_total": 68.15, "after_total": 62.57, "reduction_pct": 8.2},
+  "price_outliers_flagged": {"count": 8427, "pct_of_data": 7.5, "method": "IQR (1.5x), flagged not removed"},
+  "legacy_merged_dataframe_shape": [112650, 41],
+  "unique_orders_in_legacy": 98666,
+  "unique_products_dropped_missing_product_id": 775,
+  "imputation_decisions": [
+    {"table": "orders", "columns": ["order_approved_at", "order_delivered_carrier_date", "order_delivered_customer_date"], "decision": "Keep as NaT", "justification": "Canceled/unavailable orders never reached that stage; a fabricated date would corrupt delivery-time analysis."},
+    {"table": "products", "column": "product_category_name", "decision": "Fill with 'unknown'", "justification": "Category unknown but row represents a real sale."},
+    {"table": "products", "column": "size/weight/photo columns", "decision": "Fill with 0", "justification": "Keeps dtype numeric; missing for a handful of products only."},
+    {"table": "reviews", "columns": ["review_comment_title", "review_comment_message"], "decision": "Fill with 'No Title'/'No Message'", "justification": "Customer rated with stars but chose not to write text -- valid behavior, not missing data. Used later as an explicit exclusion filter for the sentiment task."},
+    {"table": "merged_df", "column": "product_id", "decision": "Drop row (775 rows)", "justification": "Order-items join failed; nothing to analyze at item level."},
+    {"table": "merged_df", "column": "review_score", "decision": "Fill with 0", "justification": "No review submitted; explicit 'no review' bucket. AUDITED: a 0 here must NEVER be treated as a genuine 1-5 star rating -- the sentiment-classification pipeline (preprocessing.build_sentiment_dataframe) filters on review_score in {1,2,4,5}, which naturally excludes these 0-filled rows."},
+    {"table": "merged_df", "column": "total_payment_value", "decision": "Fill with price + freight_value (3 rows only)", "justification": "Payment record missing for 3 orders; item price+freight is a reasonable single-item proxy. AUDITED: only valid for single-item orders -- flagged as a documented approximation, not a general rule."},
+    {"table": "merged_df", "column": "main_payment_type", "decision": "Fill with 'not_defined' (3 rows)", "justification": "No payment record found."},
+    {"table": "merged_df", "column": "payment_installments", "decision": "Fill with 1 (3 rows)", "justification": "No payment record found; 1 installment is the modal/default case."}
+  ]
+}

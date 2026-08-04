@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-08-04T16:30:16.091718+00:00",
+  "schema_version": "1.0",
+  "records": [
+    {
+      "order_year_month": "2016-09",
+      "total_payment_value": 47.81999969482422
+    },
+    {
+      "order_year_month": "2016-10",
+      "total_payment_value": 46566.7109375
+    },
+    {
+      "order_year_month": "2016-12",
+      "total_payment_value": 19.6200008392334
+    },
+    {
+      "order_year_month": "2017-01",
+      "total_payment_value": 127545.671875
+    },
+    {
+      "order_year_month": "2017-02",
+      "total_payment_value": 271298.65625
+    },
+    {
+      "order_year_month": "2017-03",
+      "total_payment_value": 414369.375
+    },
+    {
+      "order_year_month": "2017-04",
+      "total_payment_value": 390952.1875
+    },
+    {
+      "order_year_month": "2017-05",
+      "total_payment_value": 567066.75
+    },
+    {
+      "order_year_month": "2017-06",
+      "total_payment_value": 490225.59375
+    },
+    {
+      "order_year_month": "2017-07",
+      "total_payment_value": 566403.9375
+    },
+    {
+      "order_year_month": "2017-08",
+      "total_payment_value": 646000.625
+    },
+    {
+      "order_year_month": "2017-09",
+      "total_payment_value": 701170.0
+    },
+    {
+      "order_year_month": "2017-10",
+      "total_payment_value": 751140.25
+    },
+    {
+      "order_year_month": "2017-11",
+      "total_payment_value": 1153528.0
+    },
+    {
+      "order_year_month": "2017-12",
+      "total_payment_value": 843199.1875
+    },
+    {
+      "order_year_month": "2018-01",
+      "total_payment_value": 1078606.875
+    },
+    {
+      "order_year_month": "2018-02",
+      "total_payment_value": 966510.875
+    },
+    {
+      "order_year_month": "2018-03",
+      "total_payment_value": 1120678.0
+    },
+    {
+      "order_year_month": "2018-04",
+      "total_payment_value": 1132934.0
+    },
+    {
+      "order_year_month": "2018-05",
+      "total_payment_value": 1128836.75
+    },
+    {
+      "order_year_month": "2018-06",
+      "total_payment_value": 1012090.6875
+    },
+    {
+      "order_year_month": "2018-07",
+      "total_payment_value": 1027903.875
+    },
+    {
+      "order_year_month": "2018-08",
+      "total_payment_value": 985414.25
+    }
+  ]
+}

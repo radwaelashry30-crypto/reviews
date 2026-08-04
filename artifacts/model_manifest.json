@@ -1,0 +1,34 @@
+{
+  "primary_model": "bert",
+  "bert": {
+    "base_checkpoint": "LiYuan/amazon-review-sentiment-analysis",
+    "artifact_path": "models/bert_review_sentiment",
+    "max_length": 128,
+    "label_mapping": {"Negative": 0, "Positive": 1},
+    "random_seed": 42,
+    "verified_num_labels": 2,
+    "verified_id2label": {"0": "Negative", "1": "Positive"},
+    "weight_file": "model.safetensors",
+    "weight_file_size_mb": 638.4,
+    "source_artifact": "update/models/bert_review_sentiment/ (save_pretrained output, verified genuine fine-tuned directory)"
+  },
+  "cnn2d": {
+    "artifact_path": "models/cnn2d_review_sentiment.pt",
+    "tokenizer_path": "artifacts/cnn2d_tokenizer.pkl",
+    "vocab_size_limit": 30000,
+    "verified_vocab_size": 8202,
+    "max_length": 100,
+    "embedding_dim": 100,
+    "padding_index": 0,
+    "oov_index": 1,
+    "filter_sizes": [2, 3, 4, 5],
+    "threshold": 0.5,
+    "verified_trainable_params": 3049345,
+    "strict_load_result": "All keys matched successfully (verified 2026-08-04)",
+    "checkpoint_file_size_mb": 11.6,
+    "source_artifact": "update/models/cnn2d_review_sentiment.pt + update/models/cnn2d_tokenizer.pkl (verified genuine torch.save state_dict + pickled SimpleVocabTokenizer)"
+  },
+  "known_issue": "artifacts/cnn2d_tokenizer.pkl was pickled from the notebook's own __main__ namespace (SimpleVocabTokenizer defined there). Loading it in any other process requires registering the class under __main__ first (see model_registry.py's ModelRegistry._load_cnn). This is handled automatically by this project's loader code.",
+  "verified_at": "2026-08-04",
+  "verification_method": "torch.load(..., weights_only=True) + strict=True state_dict load into the extracted CNN2DReviewSentiment class; AutoModelForSequenceClassification.from_pretrained on the BERT directory; pickle.load on the tokenizer."
+}

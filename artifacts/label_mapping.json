@@ -1,0 +1,11 @@
+{
+  "task": "binary review sentiment classification",
+  "label_to_id": {"Negative": 0, "Positive": 1},
+  "id_to_label": {"0": "Negative", "1": "Positive"},
+  "source_rule": {
+    "negative": "review_score in {1, 2}",
+    "positive": "review_score in {4, 5}",
+    "excluded_neutral": "review_score == 3",
+    "excluded_missing_text": "review_comment_message == 'No Message' OR translated text is empty"
+  }
+}

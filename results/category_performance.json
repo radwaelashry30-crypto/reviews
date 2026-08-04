@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-08-04T16:30:16.224733+00:00",
+  "schema_version": "1.0",
+  "records": [
+    {
+      "product_category_name_english": "health_beauty",
+      "price": 1258681.375
+    },
+    {
+      "product_category_name_english": "watches_gifts",
+      "price": 1205005.625
+    },
+    {
+      "product_category_name_english": "bed_bath_table",
+      "price": 1036988.6875
+    },
+    {
+      "product_category_name_english": "sports_leisure",
+      "price": 988048.9375
+    },
+    {
+      "product_category_name_english": "computers_accessories",
+      "price": 911954.3125
+    },
+    {
+      "product_category_name_english": "furniture_decor",
+      "price": 729762.5
+    },
+    {
+      "product_category_name_english": "cool_stuff",
+      "price": 635290.875
+    },
+    {
+      "product_category_name_english": "housewares",
+      "price": 632248.6875
+    },
+    {
+      "product_category_name_english": "auto",
+      "price": 592720.125
+    },
+    {
+      "product_category_name_english": "garden_tools",
+      "price": 485256.46875
+    },
+    {
+      "product_category_name_english": "toys",
+      "price": 483946.59375
+    },
+    {
+      "product_category_name_english": "baby",
+      "price": 411764.875
+    },
+    {
+      "product_category_name_english": "perfumery",
+      "price": 399124.875
+    },
+    {
+      "product_category_name_english": "telephony",
+      "price": 323667.53125
+    },
+    {
+      "product_category_name_english": "office_furniture",
+      "price": 273960.6875
+    }
+  ]
+}

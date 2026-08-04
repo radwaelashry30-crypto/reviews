@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-08-04T16:54:12.913880+00:00",
+  "schema_version": "1.0",
+  "labels": [
+    "Negative",
+    "Positive"
+  ],
+  "matrix": [
+    [
+      2042,
+      89
+    ],
+    [
+      401,
+      3765
+    ]
+  ],
+  "true_negative": 2042,
+  "false_positive": 89,
+  "false_negative": 401,
+  "true_positive": 3765
+}

@@ -19,4 +19,9 @@ EXPOSE 8000
 
 # Fails clearly at startup if a REQUIRED artifact is missing (see app/services/model_registry.py);
 # optional artifacts degrade to a documented "unavailable" status instead of crashing the app.
+#
+# NOTE: this root-level Dockerfile is a duplicate of backend/Dockerfile, kept
+# in sync manually, ONLY because Hugging Face Spaces' Docker SDK requires a
+# Dockerfile at the repository root. Local/docker-compose development should
+# keep using backend/Dockerfile via docker-compose.yml.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

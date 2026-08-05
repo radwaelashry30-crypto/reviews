@@ -1,3 +1,13 @@
+---
+title: Olist Marketplace Backend API
+emoji: 🛒
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # Olist Marketplace Analytics and Customer Sentiment Intelligence Platform
 
 End-to-end analytics, data engineering, and review-sentiment intelligence for the Olist Brazilian e-commerce marketplace — a FastAPI backend, a React/TypeScript frontend, and the full ML pipeline extracted and corrected from the original research notebook.

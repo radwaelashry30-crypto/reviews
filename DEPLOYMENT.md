@@ -1,52 +1,59 @@
-# Deployment Guide — Permanent Public Hosting
+# Deployment Guide — Permanent Public Hosting (100% free, no credit card)
 
-Two independent services: the **backend** (FastAPI + models, needs real RAM) on **Hugging Face Spaces** (free, 16GB RAM, Docker), and the **frontend** (static React build) on **Vercel** (free).
+Two independent services, both connect directly to the GitHub repo (no tokens/secrets to manage): the **backend** (FastAPI + models) on **Render** (free web service), and the **frontend** (static React build) on **Vercel** (free).
 
-Common free hosts (Render/Railway/Fly free tiers) were ruled out: they cap free-tier RAM around 512MB, well under what's needed to load the 670MB BERT model into memory alongside PyTorch's own overhead.
+## Why this combination
 
-## Part 1 — Backend on Hugging Face Spaces
+- Hugging Face Spaces' Docker/compute tier now requires a paid PRO plan (checked live — no longer free).
+- Render's free web service tier (512MB RAM) needs no credit card, but can't fit the 670MB BERT model alongside PyTorch's own memory overhead. The deployed backend therefore runs with **`ENABLE_BERT=false`** — only the CNN2D model (~12MB, ~92% accuracy) serves predictions on the public link. BERT stays fully available when running locally (`ENABLE_BERT` defaults to `true`).
+- Render's free tier spins a service down after 15 minutes of no traffic; the next request wakes it up (takes ~30-60 seconds the first time, instant after).
 
-1. Create a free account at https://huggingface.co/join (if you don't have one).
-2. Go to https://huggingface.co/new-space
-   - **Space name**: anything, e.g. `olist-marketplace-backend`
-   - **SDK**: choose **Docker**
-   - **Hardware**: default free `CPU basic` (2 vCPU, 16GB RAM) is enough
-   - **Visibility**: Public (so the link is shareable)
-   - Click **Create Space**
-3. Get a write access token: https://huggingface.co/settings/tokens → **New token** → role **Write** → copy it.
-4. In the **GitHub** repo (github.com/radwaelashry30-crypto/reviews) → **Settings → Secrets and variables → Actions**:
-   - Add a **secret** named `HF_TOKEN` = the token from step 3.
-   - Add a **variable** named `HF_SPACE_URL` = `https://huggingface.co/spaces/<your-hf-username>/<space-name>` (from step 2's URL).
-5. Push anything to `main` (or go to the GitHub repo's **Actions** tab → "Sync backend to Hugging Face Space" → **Run workflow**). This runs `.github/workflows/sync-to-hf-spaces.yml`, which mirrors the repo to your Space and triggers a build there.
-6. Wait for the build to finish on the Space's **Logs** tab (first build downloads PyTorch etc., can take 5-10 minutes). Once it says "Running", your backend is live at:
-   `https://<your-hf-username>-<space-name>.hf.space`
-7. Test it: open `https://<your-hf-username>-<space-name>.hf.space/api/v1/health` in a browser — should show `{"success":true,...}`.
+## Part 1 — Backend on Render
+
+1. Create a free account: https://dashboard.render.com/register — sign up with GitHub (no card required for the free tier).
+2. Authorize Render to access the `reviews` repository when prompted.
+3. **New → Web Service** → select `radwaelashry30-crypto/reviews`.
+4. Fill in:
+   - **Name**: `olist-marketplace-backend` (or anything)
+   - **Region**: closest to you
+   - **Branch**: `main`
+   - **Root Directory**: leave blank (repo root)
+   - **Runtime**: **Docker**
+   - **Dockerfile Path**: `backend/Dockerfile`
+   - **Docker Build Context Directory**: `.` (the repo root)
+   - **Instance Type**: **Free**
+5. Under **Environment Variables**, add:
+   - `ENABLE_BERT` = `false`
+   - `ENVIRONMENT` = `production`
+   - `FRONTEND_ORIGINS` = `["http://localhost:5173"]` (placeholder for now — update in Part 3 once the Vercel URL exists)
+6. Click **Create Web Service**. First build takes 5-10 minutes (installs PyTorch etc). Watch progress in the **Logs** tab.
+7. Once it shows "Live", your backend URL is at the top of the page, e.g. `https://olist-marketplace-backend.onrender.com`.
+8. Test it: open `https://olist-marketplace-backend.onrender.com/api/v1/health` — should show `{"success":true,...}`.
 
 ## Part 2 — Frontend on Vercel
 
-1. Create a free account at https://vercel.com/signup, sign in with GitHub, authorize access to the `reviews` repo.
+1. Create a free account: https://vercel.com/signup — sign up with GitHub, authorize access to the `reviews` repo.
 2. **Add New → Project** → import `radwaelashry30-crypto/reviews`.
-3. **Root Directory**: set to `frontend` (important — the repo root is not the frontend app).
+3. **Root Directory**: click **Edit** and set it to `frontend` (important).
 4. **Environment Variables**: add
-   - `VITE_API_BASE_URL` = `https://<your-hf-username>-<space-name>.hf.space/api/v1` (from Part 1, step 6)
-5. Click **Deploy**. Vercel auto-detects the Vite framework and runs `npm run build`.
+   - `VITE_API_BASE_URL` = `https://olist-marketplace-backend.onrender.com/api/v1` (your actual Render URL from Part 1, step 7)
+5. Click **Deploy**.
 6. You'll get a permanent URL like `https://reviews-xyz.vercel.app` — **this is the link to share with anyone.**
 
 ## Part 3 — Close the loop: allow the frontend's domain in the backend's CORS
 
-1. On the Hugging Face Space → **Settings → Variables and secrets** → add a **variable**:
-   - `FRONTEND_ORIGINS` = `["https://reviews-xyz.vercel.app"]` (your actual Vercel URL from Part 2, step 6 — valid JSON array syntax, no trailing slash)
-2. The Space restarts automatically when a variable changes. Wait for it to go back to "Running".
+1. Back on Render → your service → **Environment** tab → edit `FRONTEND_ORIGINS`:
+   - `["https://reviews-xyz.vercel.app"]` (your actual Vercel URL from Part 2, step 6 — valid JSON array syntax, no trailing slash)
+2. Save — Render redeploys automatically. Wait for "Live".
 
 ## Verifying it all works
 
-Open the Vercel URL from anywhere (phone, another PC, ask a friend) → Dashboard should load real numbers → Sentiment page should return real predictions.
+Open the Vercel URL from anywhere (phone, another PC, a friend) → Dashboard should load real numbers → Sentiment page (select **CNN2D** in the model dropdown) should return real predictions.
 
 ## Updating the deployment later
 
-- **Backend**: any push to `main` on GitHub re-triggers the sync workflow → rebuilds the Space automatically.
-- **Frontend**: any push to `main` on GitHub auto-redeploys on Vercel (no action needed).
+Both Render and Vercel auto-redeploy on every push to `main` on GitHub — no manual steps needed after this initial setup.
 
-## Costs
+## If you ever want BERT on the public link too
 
-Both services are free at this scale. Hugging Face Spaces free CPU tier has no time limit but may sleep after a period of no traffic on some plans — a visit wakes it back up (may take a few seconds). Vercel's free tier has no sleep behavior for static sites.
+Upgrade the Render service to an instance type with at least 2GB RAM (Standard, $25/month) and set `ENABLE_BERT=true`. Everything else stays the same.

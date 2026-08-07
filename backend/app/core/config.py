@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     RFM_MODEL_PATH: Path = PROJECT_ROOT / "artifacts" / "rfm_kmeans.pkl"
 
     DEFAULT_SENTIMENT_MODEL: str = "bert"
+    # BERT (670MB weights) needs well over 512MB RAM once loaded alongside
+    # PyTorch's own baseline footprint -- too much for free-tier hosts like
+    # Render's free web service. ENABLE_BERT=false skips loading it entirely
+    # (not just letting the load fail) so a low-RAM deployment doesn't get
+    # OOM-killed attempting to load a model it can't fit. CNN2D (~12MB) is
+    # unaffected either way.
+    ENABLE_BERT: bool = True
+    ENABLE_CNN2D: bool = True
     ENABLE_TRANSLATION: bool = False
     ALLOW_EXTERNAL_MODEL_DOWNLOADS: bool = False
     MAX_REVIEW_LENGTH: int = 2000

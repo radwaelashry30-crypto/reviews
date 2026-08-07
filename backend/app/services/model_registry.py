@@ -46,8 +46,14 @@ class ModelRegistry:
         import torch
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self._load_bert()
-        self._load_cnn()
+        if settings.ENABLE_BERT:
+            self._load_bert()
+        else:
+            self.statuses["bert"] = ArtifactStatus("bert", "unavailable", str(settings.BERT_MODEL_PATH), "Disabled via ENABLE_BERT=false (low-RAM deployment)")
+        if settings.ENABLE_CNN2D:
+            self._load_cnn()
+        else:
+            self.statuses["cnn2d"] = ArtifactStatus("cnn2d", "unavailable", str(settings.CNN_CHECKPOINT_PATH), "Disabled via ENABLE_CNN2D=false")
         self._load_rfm()
 
     def _load_bert(self) -> None:

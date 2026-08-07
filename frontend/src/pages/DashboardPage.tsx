@@ -18,7 +18,9 @@ export function DashboardPage() {
 
   return (
     <div className="page">
-      <h1>Business Dashboard</h1>
+      <span className="eyebrow">Overview</span>
+      <h1>How the marketplace is doing</h1>
+      <p className="page-subtitle">Live figures from Olist's order, customer, and review data — grain-corrected, not row-inflated.</p>
 
       {summary.loading && <LoadingState label="Loading KPIs..." />}
       <ErrorState error={summary.error} />

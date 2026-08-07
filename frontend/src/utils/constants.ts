@@ -1,4 +1,5 @@
-export const APP_NAME = "Olist Marketplace Platform";
+export const APP_NAME = "Vozes";
+export const APP_TAGLINE = "Customer review intelligence for the Olist marketplace";
 
 export const MODEL_OPTIONS = [
   { value: "bert", label: "BERT (fine-tuned, primary)" },

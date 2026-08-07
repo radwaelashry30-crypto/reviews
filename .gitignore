@@ -51,3 +51,4 @@ original_project_backup/
 # Local zip export of this project
 /../*.zip
 Olist_Marketplace_Platform.zip
+frontend/*.tsbuildinfo

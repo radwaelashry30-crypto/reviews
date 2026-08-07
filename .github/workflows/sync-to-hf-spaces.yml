@@ -1,0 +1,26 @@
+name: Sync backend to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_URL: ${{ vars.HF_SPACE_URL }}
+        run: |
+          git lfs install
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          space_with_auth=$(echo "$HF_SPACE_URL" | sed "s#https://#https://user:${HF_TOKEN}@#")
+          git push --force "$space_with_auth" main

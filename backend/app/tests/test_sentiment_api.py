@@ -111,6 +111,25 @@ def test_pipeline_skips_fake_check_for_positive_sentiment(client):
         assert data["fake_check"] is None
 
 
+def test_explain_requires_nonempty_text(client):
+    resp = client.post("/api/v1/sentiment/explain", json={"text": "   "})
+    assert resp.status_code == 422
+
+
+def test_explain_degrades_gracefully_without_shap_or_bert(client):
+    """SHAP needs the `shap` package + a loaded BERT model but never
+    downloads anything at request time -- if either is missing it must
+    report 'available: false', never a 500."""
+    resp = client.post("/api/v1/sentiment/explain", json={"text": "The product works great."})
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert "available" in data
+    if data["available"]:
+        assert isinstance(data.get("top_tokens_toward_positive"), list)
+    else:
+        assert data.get("reason")
+
+
 def test_predict_translation_disabled_by_default(client):
     resp = client.post(
         "/api/v1/sentiment/predict",

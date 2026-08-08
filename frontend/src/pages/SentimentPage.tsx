@@ -1,12 +1,19 @@
 import { AspectsBreakdown } from "../components/AspectsBreakdown";
 import { ErrorState } from "../components/ErrorState";
+import { ExplanationCard } from "../components/ExplanationCard";
 import { FakeCheckBadge } from "../components/FakeCheckBadge";
 import { SentimentForm } from "../components/SentimentForm";
 import { SentimentResult } from "../components/SentimentResult";
-import { useFullPipeline } from "../hooks/useSentiment";
+import { useExplanation, useFullPipeline } from "../hooks/useSentiment";
 
 export function SentimentPage() {
   const { result, loading, error, analyze } = useFullPipeline();
+  const explanation = useExplanation();
+
+  function handleSubmit(request: Parameters<typeof analyze>[0]) {
+    explanation.reset();
+    analyze(request);
+  }
 
   return (
     <div className="page">
@@ -23,13 +30,26 @@ export function SentimentPage() {
 
       <div className="sentiment-layout">
         <div className="sentiment-form-card">
-          <SentimentForm onSubmit={analyze} loading={loading} />
+          <SentimentForm onSubmit={handleSubmit} loading={loading} />
         </div>
 
         <div>
           <ErrorState error={error} />
           {result ? (
-            <SentimentResult result={result.sentiment} />
+            <>
+              <SentimentResult result={result.sentiment} />
+              {result.sentiment.model_name === "bert" && (
+                <button
+                  type="button"
+                  className="explain-trigger"
+                  disabled={explanation.loading}
+                  onClick={() => explanation.explain(result.sentiment.cleaned_text)}
+                >
+                  {explanation.loading ? "Explaining..." : "Explain this prediction"}
+                </button>
+              )}
+              <ExplanationCard result={explanation.result} loading={explanation.loading} />
+            </>
           ) : (
             !error && (
               <div className="sentiment-empty">

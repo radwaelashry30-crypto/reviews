@@ -46,6 +46,10 @@ class ModelRegistry:
         # second request reuses the same in-memory pipeline.
         self.fake_review_pipe = None
         self.absa_pipe = None
+        # SHAP explainer: only needs the `shap` package (already installed
+        # locally) and the BERT model that's already loaded -- no separate
+        # external download, so not gated by ALLOW_EXTERNAL_MODEL_DOWNLOADS.
+        self.shap_explainer = None
 
     # -- loading -------------------------------------------------------
     def load_all(self) -> None:
@@ -182,6 +186,30 @@ class ModelRegistry:
         except Exception as e:  # noqa: BLE001
             logger.exception("Failed to load fake-review-detector")
             self.statuses["fake_review"] = ArtifactStatus("fake_review", "loading_failed", None, str(e))
+            return None
+
+    def get_shap_explainer(self):
+        """Loads a SHAP explainer wrapping the fine-tuned BERT model on first
+        call, then reuses it. Requires BERT itself to be available (ENABLE_BERT=true)
+        and the `shap` package installed -- returns None (never raises) otherwise."""
+        if self.shap_explainer is not None:
+            return self.shap_explainer
+        if self.bert_model is None or self.bert_tokenizer is None:
+            self.statuses["shap"] = ArtifactStatus("shap", "unavailable", None, "BERT model not available")
+            return None
+        from app.ml.explainability import is_shap_available, load_shap_explainer
+
+        if not is_shap_available():
+            self.statuses["shap"] = ArtifactStatus("shap", "unavailable", None, "shap package not installed")
+            return None
+        try:
+            device_idx = 0 if self.device == "cuda" else -1
+            self.shap_explainer = load_shap_explainer(self.bert_model, self.bert_tokenizer, device=device_idx)
+            self.statuses["shap"] = ArtifactStatus("shap", "available", None, extra={"device": self.device})
+            return self.shap_explainer
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to build SHAP explainer")
+            self.statuses["shap"] = ArtifactStatus("shap", "loading_failed", None, str(e))
             return None
 
     def get_absa_pipeline(self):

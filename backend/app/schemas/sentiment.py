@@ -72,3 +72,21 @@ class FullPipelineResponse(BaseModel):
     sentiment: SentimentPrediction
     fake_check: dict | None
     aspects: dict
+
+
+class ExplainRequest(BaseModel):
+    """SHAP explanation for a single review, BERT only."""
+    text: str = Field(..., min_length=1, max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("text must not be blank")
+        return v
+
+
+class ExplainResponse(BaseModel):
+    available: bool
+    reason: str | None = None
+    top_tokens_toward_positive: list[dict] | None = None

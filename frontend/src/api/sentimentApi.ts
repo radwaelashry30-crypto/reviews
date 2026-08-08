@@ -1,6 +1,6 @@
 import { apiPost } from "./client";
 import type {
-  BatchPredictionRequest, BatchPredictionResponse, FullPipelineRequest, FullPipelineResponse,
+  BatchPredictionRequest, BatchPredictionResponse, ExplainResponse, FullPipelineRequest, FullPipelineResponse,
   SentimentPrediction, SentimentPredictionRequest,
 } from "../types/sentiment";
 
@@ -14,4 +14,8 @@ export function predictSentimentBatch(request: BatchPredictionRequest): Promise<
 
 export function analyzeFullPipeline(request: FullPipelineRequest): Promise<FullPipelineResponse> {
   return apiPost<FullPipelineResponse>("/sentiment/pipeline", request);
+}
+
+export function explainSentiment(text: string): Promise<ExplainResponse> {
+  return apiPost<ExplainResponse>("/sentiment/explain", { text });
 }

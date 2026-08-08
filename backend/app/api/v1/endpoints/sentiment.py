@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.dependencies import get_model_registry
 from app.schemas.common import envelope
-from app.schemas.sentiment import BatchPredictionRequest, FullPipelineRequest, SentimentPredictionRequest
+from app.schemas.sentiment import BatchPredictionRequest, ExplainRequest, FullPipelineRequest, SentimentPredictionRequest
 from app.services import advanced_sentiment_service, sentiment_service
 from app.services.model_registry import ModelRegistry
 
@@ -42,3 +42,23 @@ def full_pipeline(payload: FullPipelineRequest, registry: ModelRegistry = Depend
         aspects=payload.aspects,
     )
     return envelope(result, model_version=payload.model_name)
+
+
+@router.post("/explain")
+def explain(payload: ExplainRequest, registry: ModelRegistry = Depends(get_model_registry)):
+    """SHAP token-level explanation for the fine-tuned BERT model (BERT only --
+    CNN2D's embeddings aren't set up for SHAP's text masker). Explains the
+    exact text the caller submits; not restricted to the stored test split
+    (that restriction applies only to the audit/reproduction script)."""
+    from app.ml.explainability import explain_single_review
+
+    if registry.bert_model is None:
+        return envelope({"available": False, "reason": "BERT model not available on this deployment"})
+
+    explainer = registry.get_shap_explainer()
+    if explainer is None:
+        status = registry.statuses.get("shap")
+        return envelope({"available": False, "reason": status.error if status else "not available"})
+
+    result = explain_single_review(explainer, registry.bert_model, payload.text)
+    return envelope(result, model_version="bert")

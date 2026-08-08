@@ -232,3 +232,19 @@ body {
 .aspect-name { text-transform: capitalize; color: var(--text-muted); }
 .aspect-track { height: 6px; }
 .aspect-sentiment { font-weight: 600; font-size: 0.78rem; text-align: right; }
+
+/* ---------- Explainability ---------- */
+
+.explanation-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 1.35rem; box-shadow: var(--shadow-card); margin-top: 1.25rem; animation: rise 0.25s ease;
+}
+.explain-trigger {
+  margin-top: 0.9rem; background: transparent; color: var(--text-muted); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 500; cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.explain-trigger:hover:not(:disabled) { border-color: var(--accent-border); color: var(--text); }
+.explain-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.token-chip-list { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.9rem; }
+.token-chip { padding: 0.2rem 0.55rem; border-radius: 6px; border: 1px solid; font-size: 0.85rem; color: var(--text); }

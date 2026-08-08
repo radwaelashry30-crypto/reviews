@@ -82,3 +82,16 @@ export interface FullPipelineResponse {
   fake_check: FakeCheckResult | null;
   aspects: AspectsResult;
 }
+
+// -- SHAP explanation (BERT only) --
+
+export interface TokenContribution {
+  token: string;
+  shap_value: number;
+}
+
+export interface ExplainResponse {
+  available: boolean;
+  reason?: string;
+  top_tokens_toward_positive?: TokenContribution[];
+}

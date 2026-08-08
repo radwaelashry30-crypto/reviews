@@ -1,7 +1,7 @@
 import { useState } from "react";
 import * as sentimentApi from "../api/sentimentApi";
 import { ApiClientError } from "../types/api";
-import type { FullPipelineRequest, FullPipelineResponse, SentimentPrediction, SentimentPredictionRequest } from "../types/sentiment";
+import type { ExplainResponse, FullPipelineRequest, FullPipelineResponse, SentimentPrediction, SentimentPredictionRequest } from "../types/sentiment";
 
 export function useSentimentPrediction() {
   const [result, setResult] = useState<SentimentPrediction | null>(null);
@@ -46,4 +46,32 @@ export function useFullPipeline() {
   }
 
   return { result, loading, error, analyze };
+}
+
+/** SHAP token-level explanation, BERT only, on-demand (not part of the auto-run pipeline -- slower). */
+export function useExplanation() {
+  const [result, setResult] = useState<ExplainResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<ApiClientError | null>(null);
+
+  async function explain(text: string) {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const data = await sentimentApi.explainSentiment(text);
+      setResult(data);
+    } catch (e) {
+      setError(e as ApiClientError);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function reset() {
+    setResult(null);
+    setError(null);
+  }
+
+  return { result, loading, error, explain, reset };
 }

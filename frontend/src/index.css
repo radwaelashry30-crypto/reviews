@@ -205,4 +205,29 @@ body {
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 .json-block { background: var(--bg-elevated); padding: 0.9rem; border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.8rem; border: 1px solid var(--border-soft); }
-.limitations-note { color: var(--text-faint); font-size: 0.85rem; line-height: 1.6; }
+.limitations-note { color: var(--text-faint); font-size: 0.85rem; line-height: 1.6; margin: 0.5rem 0 0; }
+.limitations-note code { background: var(--bg-elevated); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.78rem; }
+
+/* ---------- Pipeline follow-up: Task 2 (fake check) + Task 3 (aspects) ---------- */
+
+.pipeline-followup {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 1.75rem;
+  animation: rise 0.3s ease;
+}
+@media (min-width: 900px) { .pipeline-followup { grid-template-columns: 1fr 1fr; } }
+
+.fake-check-card, .aspects-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 1.35rem; box-shadow: var(--shadow-card);
+}
+.fake-check-card.clear { border-color: var(--positive-border); }
+.fake-check-card.flagged { border-color: var(--negative-border); }
+.fake-check-verdict { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0.5rem 0 0.35rem; }
+.fake-check-card.clear .fake-check-verdict { color: var(--positive); }
+.fake-check-card.flagged .fake-check-verdict { color: var(--negative); }
+
+.aspects-list { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
+.aspect-row { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
+.aspect-name { text-transform: capitalize; color: var(--text-muted); }
+.aspect-track { height: 6px; }
+.aspect-sentiment { font-weight: 600; font-size: 0.78rem; text-align: right; }

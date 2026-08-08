@@ -1,6 +1,7 @@
 import { apiPost } from "./client";
 import type {
-  BatchPredictionRequest, BatchPredictionResponse, SentimentPrediction, SentimentPredictionRequest,
+  BatchPredictionRequest, BatchPredictionResponse, FullPipelineRequest, FullPipelineResponse,
+  SentimentPrediction, SentimentPredictionRequest,
 } from "../types/sentiment";
 
 export function predictSentiment(request: SentimentPredictionRequest): Promise<SentimentPrediction> {
@@ -9,4 +10,8 @@ export function predictSentiment(request: SentimentPredictionRequest): Promise<S
 
 export function predictSentimentBatch(request: BatchPredictionRequest): Promise<BatchPredictionResponse> {
   return apiPost<BatchPredictionResponse>("/sentiment/predict-batch", request);
+}
+
+export function analyzeFullPipeline(request: FullPipelineRequest): Promise<FullPipelineResponse> {
+  return apiPost<FullPipelineResponse>("/sentiment/pipeline", request);
 }

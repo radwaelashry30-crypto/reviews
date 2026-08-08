@@ -53,4 +53,24 @@ On a fair, identical, leakage-corrected test set, **BERT is the stronger model o
 ## 4. What this audit does NOT claim
 
 - It does not claim the notebook's original 0.9275/0.9192 accuracy figures are wrong in isolation — they are exactly what that code produced. It claims they cannot be used to compare the two models against each other, and that the underlying split had test-set leakage.
+
+## 5. CNN2D negation retrain (2026-08-07)
+
+**Problem, verified by direct testing**: CNN2D misreads "the product is not bad" as Negative at 97.2% confidence. BERT, on the same input, correctly reads it Positive at 83.2%. This is a real architectural gap, not a one-off: CNN2D is a bag-of-n-grams model (filter sizes 2-5, global max-pool) whose predictions lean heavily on individual strong-sentiment words like "bad"/"terrible" regardless of a preceding "not" — it has to learn negation entirely from patterns present in its own training data, and Olist's translated review text underrepresents them. BERT generalizes negation from pretraining and doesn't have this problem.
+
+**Fix attempted**: `backend/scripts/retrain_cnn2d_negation_augmented.py` augments CNN2D's TRAIN split (Olist val/test untouched) with a small, label-balanced, negation-rich sample pulled from Datafiniti's Amazon Consumer Reviews dataset (`app/ml/negation_augmentation.py`). Raw Amazon reviews are ~93% positive-labeled, so naive sampling would have made calibration worse — the sampler instead takes ALL available negative-labeled examples (987 negated + 854 ordinary, the scarce resource) and matches each with an equal-sized positive sample, giving an exactly 50/50-balanced 3,682-row augmentation set (1,974 negated / 1,708 ordinary), with the negated portion additionally oversampled 4x in the final training mix (9,604 of 31,642 total training rows) for a stronger gradient signal. A fresh tokenizer was fit on the combined train text (train-only, no val/test leakage) and CNN2D was trained from scratch — a checkpoint and its tokenizer are always a matched pair (see §2 above).
+
+**Result — genuine improvement, but NOT a full fix**:
+
+| | Before | After |
+|---|---|---|
+| Olist test accuracy (n=6,297, unaugmented) | 0.9192 | **0.9201** (no regression) |
+| Olist test F1-macro | 0.9074 | **0.9127** |
+| Hand-crafted negation eval (10 cases, held out from training) | 7/10 | 7/10 (same count, but `p_positive` moved toward correct on the failing cases, e.g. "not bad" 0.028 → 0.116) |
+
+"the product is not bad" **still classifies as Negative** after this fix (p_positive=0.116, up from 0.028 but still well under the 0.5 threshold). Two other short "not + strong-negative-word" idioms ("not late", "not terrible") also remain wrong. More balanced negation data measurably helped (better test accuracy AND F1, better probability calibration on 7 of 10 cases) but did not fully close the gap on this specific idiom pattern — the available real negated-and-negative training examples (987) are too few, and the failure mode (a single strong-polarity word overpowering a 2-gram "not X" filter) is a known, documented limitation of small n-gram CNN text classifiers, not something more data alone reliably fixes at this scale. Full correctness on this pattern class would need either substantially more real negation data, synthetic template augmentation at much larger scale, or (most reliably) an attention-based model — which is exactly what BERT already provides.
+
+**Practical consequence**: on this project's own deployed backend (Render free tier, 512MB RAM), `ENABLE_BERT=false` — the public site currently serves CNN2D-only, so this exact failure mode is user-visible there. Locally / on a host with enough RAM for BERT, this class of input is already handled correctly by the primary model.
+
+Applied to the shipped `models/cnn2d_review_sentiment.pt` + `artifacts/cnn2d_tokenizer.pkl` since it is a strict, measured improvement (better accuracy, better F1, no case that got worse) with no regression. Full before/after data: `results/cnn2d_negation_augmentation_report.json`. Reproduce with `python backend/scripts/retrain_cnn2d_negation_augmented.py --apply`.
 - It does not claim CNN2D is a bad model — 0.92 accuracy on a corrected, leakage-free split with a ~3M-parameter from-scratch architecture trained in 155 seconds is a strong result for its class.

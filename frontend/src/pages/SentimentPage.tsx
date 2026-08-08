@@ -1,10 +1,12 @@
+import { AspectsBreakdown } from "../components/AspectsBreakdown";
 import { ErrorState } from "../components/ErrorState";
+import { FakeCheckBadge } from "../components/FakeCheckBadge";
 import { SentimentForm } from "../components/SentimentForm";
 import { SentimentResult } from "../components/SentimentResult";
-import { useSentimentPrediction } from "../hooks/useSentiment";
+import { useFullPipeline } from "../hooks/useSentiment";
 
 export function SentimentPage() {
-  const { result, loading, error, predict } = useSentimentPrediction();
+  const { result, loading, error, analyze } = useFullPipeline();
 
   return (
     <div className="page">
@@ -12,22 +14,22 @@ export function SentimentPage() {
         <span className="eyebrow">Review Analyzer</span>
         <h1>What is this review really saying?</h1>
         <p className="page-subtitle">
-          Paste any customer review and the model reads it the way a human would — is this
-          customer happy or frustrated? Trained on tens of thousands of real Olist marketplace
-          reviews. Results are a probabilistic, dataset-dependent estimate, not an objective
-          judgment of the review.
+          Paste any customer review. Three models run in sequence: sentiment (Positive/Negative),
+          an authenticity check for negative reviews, and an aspect breakdown showing which parts
+          of the experience — price, quality, delivery, service, packaging — drove the reaction.
+          Results are probabilistic, dataset-dependent estimates, not objective judgments.
         </p>
       </div>
 
       <div className="sentiment-layout">
         <div className="sentiment-form-card">
-          <SentimentForm onSubmit={predict} loading={loading} />
+          <SentimentForm onSubmit={analyze} loading={loading} />
         </div>
 
         <div>
           <ErrorState error={error} />
           {result ? (
-            <SentimentResult result={result} />
+            <SentimentResult result={result.sentiment} />
           ) : (
             !error && (
               <div className="sentiment-empty">
@@ -46,6 +48,13 @@ export function SentimentPage() {
           )}
         </div>
       </div>
+
+      {result && (
+        <div className="pipeline-followup">
+          <FakeCheckBadge result={result.fake_check} />
+          <AspectsBreakdown result={result.aspects} />
+        </div>
+      )}
     </div>
   );
 }

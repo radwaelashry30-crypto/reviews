@@ -50,3 +50,25 @@ class BatchPredictionResultItem(SentimentPrediction):
 class BatchPredictionResponse(BaseModel):
     results: list[BatchPredictionResultItem]
     n_items: int
+
+
+class FullPipelineRequest(BaseModel):
+    """Task 1 (sentiment) -> Task 2 (fake check, only if Negative) -> Task 3 (aspects, always)."""
+    text: str = Field(..., min_length=1, max_length=2000)
+    model_name: ModelName = "bert"
+    source_language: Literal["en", "pt"] = "en"
+    translate: bool = False
+    aspects: list[str] | None = None
+
+    @field_validator("text")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("text must not be blank")
+        return v
+
+
+class FullPipelineResponse(BaseModel):
+    sentiment: SentimentPrediction
+    fake_check: dict | None
+    aspects: dict

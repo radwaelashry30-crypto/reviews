@@ -1,9 +1,9 @@
 import { FormEvent, useState } from "react";
 import { LANGUAGE_OPTIONS, MODEL_OPTIONS } from "../utils/constants";
-import type { ModelName, SentimentPredictionRequest } from "../types/sentiment";
+import type { FullPipelineRequest, ModelName } from "../types/sentiment";
 
 interface Props {
-  onSubmit: (request: SentimentPredictionRequest) => void;
+  onSubmit: (request: FullPipelineRequest) => void;
   loading: boolean;
 }
 

@@ -23,6 +23,35 @@ def is_absa_model_available() -> bool:
         return False
 
 
+def load_absa_pipeline(device: int = -1):
+    """Loads the pipeline once. Callers (ModelRegistry) should cache and reuse it."""
+    from transformers import pipeline
+
+    return pipeline("text-classification", model=ABSA_MODEL, device=device)
+
+
+def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) -> dict:
+    """Score one review across each aspect with an already-loaded pipeline.
+    Used by the live inference pipeline (Task 3)."""
+    aspects = aspects or ABSA_ASPECTS
+    records = []
+    for aspect in aspects:
+        try:
+            pred = pipe(text, text_pair=aspect, truncation=True)[0]
+            records.append({"aspect": aspect, "sentiment": pred["label"], "confidence": round(float(pred["score"]), 4)})
+        except Exception as e:
+            records.append({"aspect": aspect, "sentiment": "UNKNOWN", "confidence": 0.0, "error": str(e)})
+    return {
+        "available": True,
+        "model": ABSA_MODEL,
+        "aspects": records,
+        "methodology_note": (
+            "Sentiment-given-aspect over a fixed candidate aspect list, not "
+            "automatic aspect extraction."
+        ),
+    }
+
+
 def run_absa(
     reviews: pd.DataFrame,
     text_column: str = "review_comment_message_en",

@@ -40,6 +40,12 @@ class ModelRegistry:
         self.rfm_kmeans = None
         self.rfm_cluster_label_map: dict | None = None
         self.statuses: dict[str, ArtifactStatus] = {}
+        # Task 2 / Task 3: large external models (256MB / 706MB). Never loaded
+        # at startup -- lazy, on first actual request, gated by
+        # ALLOW_EXTERNAL_MODEL_DOWNLOADS, and cached here afterward so a
+        # second request reuses the same in-memory pipeline.
+        self.fake_review_pipe = None
+        self.absa_pipe = None
 
     # -- loading -------------------------------------------------------
     def load_all(self) -> None:
@@ -155,3 +161,44 @@ class ModelRegistry:
             reason = status_obj.error if status_obj else "not loaded"
             raise ModelUnavailableError(f"RFM segmentation model is not available: {reason}")
         return self.rfm_scaler, self.rfm_kmeans, self.rfm_cluster_label_map
+
+    # -- lazy-loaded optional/experimental models (Task 2, Task 3) ------
+    def get_fake_review_pipeline(self):
+        """Loads jb10231/fake-review-detector on first call, then reuses it.
+        Returns None (never raises) if downloads are disabled or loading fails --
+        callers degrade to an 'unavailable' response, never a crash."""
+        if self.fake_review_pipe is not None:
+            return self.fake_review_pipe
+        if not settings.ALLOW_EXTERNAL_MODEL_DOWNLOADS:
+            self.statuses["fake_review"] = ArtifactStatus("fake_review", "unavailable", None, "ALLOW_EXTERNAL_MODEL_DOWNLOADS=false")
+            return None
+        from app.ml.fake_review_detection import load_fake_review_pipeline
+
+        try:
+            device_idx = 0 if self.device == "cuda" else -1
+            self.fake_review_pipe = load_fake_review_pipeline(device=device_idx)
+            self.statuses["fake_review"] = ArtifactStatus("fake_review", "available", None, extra={"device": self.device})
+            return self.fake_review_pipe
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to load fake-review-detector")
+            self.statuses["fake_review"] = ArtifactStatus("fake_review", "loading_failed", None, str(e))
+            return None
+
+    def get_absa_pipeline(self):
+        """Loads yangheng/deberta-v3-base-absa-v1.1 on first call, then reuses it."""
+        if self.absa_pipe is not None:
+            return self.absa_pipe
+        if not settings.ALLOW_EXTERNAL_MODEL_DOWNLOADS:
+            self.statuses["absa"] = ArtifactStatus("absa", "unavailable", None, "ALLOW_EXTERNAL_MODEL_DOWNLOADS=false")
+            return None
+        from app.ml.absa import load_absa_pipeline
+
+        try:
+            device_idx = 0 if self.device == "cuda" else -1
+            self.absa_pipe = load_absa_pipeline(device=device_idx)
+            self.statuses["absa"] = ArtifactStatus("absa", "available", None, extra={"device": self.device})
+            return self.absa_pipe
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to load ABSA model")
+            self.statuses["absa"] = ArtifactStatus("absa", "loading_failed", None, str(e))
+            return None

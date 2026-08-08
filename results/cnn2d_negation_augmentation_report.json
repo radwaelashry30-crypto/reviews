@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-08-08T07:12:28.868299+00:00",
+  "schema_version": "1.0",
+  "augmentation": {
+    "amazon_sources": [
+      "C:\\Users\\User1\\Downloads\\Fake news\\Spam & no spam\\Dataset\\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products.csv",
+      "C:\\Users\\User1\\Downloads\\Fake news\\Spam & no spam\\Dataset\\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products_May19.csv",
+      "C:\\Users\\User1\\Downloads\\Fake news\\Spam & no spam\\Dataset\\1429_1.csv"
+    ],
+    "sample_size": 3682,
+    "negation_ratio_target": 0.6,
+    "combined_train_size": 31642
+  },
+  "olist_test_metrics_new": {
+    "accuracy": 0.9201206923932032,
+    "precision_macro": 0.9055200576429362,
+    "recall_macro": 0.9222092522133434,
+    "f1_macro": 0.9126991076645985,
+    "roc_auc": 0.9675972932769197,
+    "pr_auc": 0.9840067065760236,
+    "mcc": 0.8275610437784899,
+    "loss": null,
+    "n_samples": 6297
+  },
+  "negation_eval_accuracy": 0.7,
+  "negation_eval_details": [
+    {
+      "text": "the product is not bad",
+      "expected": 1,
+      "predicted": 0,
+      "prob_positive": 0.1163,
+      "correct": false
+    },
+    {
+      "text": "this is not good at all",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.1869,
+      "correct": true
+    },
+    {
+      "text": "I would not recommend this to anyone",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.1053,
+      "correct": true
+    },
+    {
+      "text": "not amazing but definitely okay for the price",
+      "expected": 1,
+      "predicted": 1,
+      "prob_positive": 0.85,
+      "correct": true
+    },
+    {
+      "text": "the delivery was not late this time",
+      "expected": 1,
+      "predicted": 0,
+      "prob_positive": 0.1467,
+      "correct": false
+    },
+    {
+      "text": "it is not what I expected, quite disappointing",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.2372,
+      "correct": true
+    },
+    {
+      "text": "the quality is not terrible, actually pretty solid",
+      "expected": 1,
+      "predicted": 0,
+      "prob_positive": 0.0457,
+      "correct": false
+    },
+    {
+      "text": "this isn't worth the money",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.1178,
+      "correct": true
+    },
+    {
+      "text": "customer service wasn't helpful at all",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.4618,
+      "correct": true
+    },
+    {
+      "text": "nothing went wrong with this order, perfect",
+      "expected": 1,
+      "predicted": 1,
+      "prob_positive": 0.8558,
+      "correct": true
+    }
+  ],
+  "vocab_size": 11503,
+  "best_epoch": 8,
+  "train_time_seconds": 180.0728874206543,
+  "applied": false
+}

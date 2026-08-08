@@ -3,11 +3,36 @@ import { ApiClientError, type ApiErrorResponse, type ApiResponse } from "../type
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
+// 65s: free-tier hosts (e.g. Render) spin the backend down after inactivity
+// and can take "50 seconds or more" to wake on the next request (their own
+// documented ceiling). A shorter timeout here fires a false NETWORK_ERROR
+// while the server is still waking up, not actually unreachable.
+const REQUEST_TIMEOUT_MS = 65_000;
+
 export const httpClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: { "Content-Type": "application/json" },
 });
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Retries once on timeout/network failure -- covers the case where a cold
+ * backend was still waking up on the first attempt (by the second attempt,
+ * ~1s later, it has very likely finished and responds quickly). Does NOT
+ * retry on a real HTTP error response (4xx/5xx) -- only on no response at all. */
+async function withColdStartRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    const isNetworkOrTimeout = error instanceof AxiosError && !error.response;
+    if (!isNetworkOrTimeout) throw error;
+    await sleep(1000);
+    return fn();
+  }
+}
 
 // Placeholder for future authentication: set a token here and it's applied to every request.
 export function setAuthToken(token: string | null): void {
@@ -35,7 +60,7 @@ function toApiClientError(error: unknown): ApiClientError {
 
 export async function apiGet<T>(path: string, params?: Record<string, unknown>): Promise<T> {
   try {
-    const resp = await httpClient.get<ApiResponse<T>>(path, { params });
+    const resp = await withColdStartRetry(() => httpClient.get<ApiResponse<T>>(path, { params }));
     return resp.data.data;
   } catch (error) {
     if (import.meta.env.DEV) console.error(`GET ${path} failed`, error);
@@ -45,7 +70,7 @@ export async function apiGet<T>(path: string, params?: Record<string, unknown>):
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   try {
-    const resp = await httpClient.post<ApiResponse<T>>(path, body);
+    const resp = await withColdStartRetry(() => httpClient.post<ApiResponse<T>>(path, body));
     return resp.data.data;
   } catch (error) {
     if (import.meta.env.DEV) console.error(`POST ${path} failed`, error);

@@ -129,6 +129,7 @@ body {
 .state { padding: 0.7rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.87rem; }
 .state-loading { color: var(--text-faint); }
 .state-loading::after { content: ""; display: inline-block; width: 1em; }
+.state-loading-hint { margin-top: 0.35rem; font-size: 0.78rem; color: var(--text-faint); opacity: 0.85; }
 .state-error { background: var(--negative-soft); color: #f0a99a; border: 1px solid var(--negative-border); }
 
 /* ---------- Tables ---------- */

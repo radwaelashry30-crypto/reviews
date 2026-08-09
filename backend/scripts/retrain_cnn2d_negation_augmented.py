@@ -34,7 +34,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
 from app.ml import datasets as ds, evaluation as ev, models, preprocessing as prep, training as tr  # noqa: E402
-from app.ml.negation_augmentation import build_negation_augmented_sample, build_sentiment_labels, load_amazon_reviews  # noqa: E402
+from app.ml.negation_augmentation import (  # noqa: E402
+    build_negation_augmented_sample, build_sentiment_labels, load_amazon_polarity_dataset, load_amazon_reviews,
+)
 from app.ml.utils import set_seed, write_json  # noqa: E402
 
 NEGATION_EVAL_SET = [
@@ -53,12 +55,19 @@ NEGATION_EVAL_SET = [
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", choices=["datafiniti", "polarity"], default="polarity",
+                         help="datafiniti = small (~45K rows, capped at 987 negated-negative examples, first attempt). "
+                              "polarity = fancyzhx/amazon_polarity (~900K rows/shard, ~300K negated-negative -- second, larger attempt.")
     parser.add_argument("--amazon-csv", action="append", default=[
         r"C:\Users\User1\Downloads\Fake news\Spam & no spam\Dataset\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products.csv",
         r"C:\Users\User1\Downloads\Fake news\Spam & no spam\Dataset\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products_May19.csv",
         r"C:\Users\User1\Downloads\Fake news\Spam & no spam\Dataset\1429_1.csv",
     ])
-    parser.add_argument("--augment-total", type=int, default=10_000)
+    parser.add_argument("--polarity-parquet", action="append", default=[
+        str(Path.home() / ".cache" / "huggingface" / "hub" / "datasets--fancyzhx--amazon_polarity" /
+            "snapshots" / "9d9c45c18f8c3cf1b23a3c27917b60cbf28f3289" / "amazon_polarity" / "train-00000-of-00004.parquet"),
+    ])
+    parser.add_argument("--augment-total", type=int, default=60_000)
     parser.add_argument("--negation-ratio", type=float, default=0.6)
     parser.add_argument("--negation-oversample", type=int, default=1, help="Repeat the negated portion of the augmentation sample this many times in the TRAIN set, to compensate for how few genuinely negated examples exist in the source data.")
     parser.add_argument("--seed", type=int, default=42)
@@ -75,9 +84,14 @@ def main() -> None:
     split = prep.split_sentiment_dataset(deduped, seed=args.seed)
     print(f"Olist train/val/test: {len(split.train)}/{len(split.val)}/{len(split.test)}")
 
-    print("\n=== Building negation-augmented sample from Amazon reviews ===")
-    amazon_raw = load_amazon_reviews(args.amazon_csv)
-    amazon_labeled = build_sentiment_labels(amazon_raw)
+    print(f"\n=== Building negation-augmented sample from Amazon reviews (source={args.source}) ===")
+    if args.source == "polarity":
+        amazon_labeled = load_amazon_polarity_dataset(args.polarity_parquet)
+        print(f"Loaded {len(amazon_labeled)} rows from Amazon Polarity (fancyzhx/amazon_polarity)")
+    else:
+        amazon_raw = load_amazon_reviews(args.amazon_csv)
+        amazon_labeled = build_sentiment_labels(amazon_raw)
+        print(f"Loaded {len(amazon_labeled)} rows from Datafiniti")
     augment_df = build_negation_augmented_sample(amazon_labeled, n_total=args.augment_total, negation_ratio=args.negation_ratio, seed=args.seed)
     augment_df.to_csv(PROJECT_ROOT / "data" / "interim" / "negation_augmentation_sample.csv", index=False)
     print(f"Augmentation sample: {len(augment_df)} rows (label balance: {augment_df['label'].value_counts(normalize=True).to_dict()})")
@@ -139,8 +153,12 @@ def main() -> None:
 
     write_json(PROJECT_ROOT / "results" / "cnn2d_negation_augmentation_report.json", {
         "augmentation": {
-            "amazon_sources": args.amazon_csv,
+            "source": args.source,
+            "amazon_sources": args.polarity_parquet if args.source == "polarity" else args.amazon_csv,
+            "source_pool_size": len(amazon_labeled),
             "sample_size": len(augment_df),
+            "negated_portion": len(negated_part),
+            "negation_oversample": args.negation_oversample,
             "negation_ratio_target": args.negation_ratio,
             "combined_train_size": len(train_texts),
         },
@@ -150,7 +168,7 @@ def main() -> None:
         "vocab_size": tokenizer.vocab_size,
         "best_epoch": best_epoch,
         "train_time_seconds": train_time,
-        "applied": False,
+        "applied": args.apply,
     })
 
     if args.apply:

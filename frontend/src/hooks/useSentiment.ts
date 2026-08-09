@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as sentimentApi from "../api/sentimentApi";
 import { ApiClientError } from "../types/api";
 import type {
@@ -79,11 +79,30 @@ export function useExplanation() {
   return { result, loading, error, explain, reset };
 }
 
-/** CSV/Excel batch review upload. */
+const LAST_UPLOAD_ID_KEY = "baseera.lastUploadId";
+
+/** CSV/Excel batch review upload. Results are saved server-side for 7 days
+ * (see backend/app/services/upload_store.py); the upload_id is remembered in
+ * localStorage so reloading the page (or coming back later, within 7 days)
+ * restores the same results instead of requiring a re-upload. */
 export function useFileUpload() {
   const [result, setResult] = useState<FileUploadResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(true);
   const [error, setError] = useState<ApiClientError | null>(null);
+
+  useEffect(() => {
+    const savedId = localStorage.getItem(LAST_UPLOAD_ID_KEY);
+    if (!savedId) {
+      setRestoring(false);
+      return;
+    }
+    sentimentApi
+      .getUploadedResult(savedId)
+      .then((data) => setResult(data))
+      .catch(() => localStorage.removeItem(LAST_UPLOAD_ID_KEY)) // expired or gone -- silently drop, not an error to surface
+      .finally(() => setRestoring(false));
+  }, []);
 
   async function upload(file: File, modelName: ModelName) {
     setLoading(true);
@@ -92,6 +111,7 @@ export function useFileUpload() {
     try {
       const data = await sentimentApi.uploadReviewFile(file, modelName);
       setResult(data);
+      if (data.upload_id) localStorage.setItem(LAST_UPLOAD_ID_KEY, data.upload_id);
     } catch (e) {
       setError(e as ApiClientError);
     } finally {
@@ -99,5 +119,10 @@ export function useFileUpload() {
     }
   }
 
-  return { result, loading, error, upload };
+  function clearSaved() {
+    localStorage.removeItem(LAST_UPLOAD_ID_KEY);
+    setResult(null);
+  }
+
+  return { result, loading: loading || restoring, error, upload, clearSaved };
 }

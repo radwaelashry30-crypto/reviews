@@ -170,6 +170,34 @@ def test_upload_file_classifies_csv_rows(client):
     assert data["n_skipped_empty_or_error"] == 1
     assert data["n_positive"] + data["n_negative"] == 2
     assert len(data["results"]) == 2
+    assert data["upload_id"]
+    assert data["retention_days"] == 7
+
+
+def test_upload_file_result_retrievable_by_id(client):
+    """Results are saved for 7 days -- GET should return the exact same
+    classification without re-uploading."""
+    if not _cnn_available(client):
+        pytest.skip("CNN2D artifact not available in this environment.")
+    csv_content = b"text\n\"Excellent, would buy again!\"\n"
+    upload_resp = client.post(
+        "/api/v1/sentiment/upload-file",
+        files={"file": ("reviews.csv", csv_content, "text/csv")},
+        data={"model_name": "cnn2d"},
+    )
+    upload_id = upload_resp.json()["data"]["upload_id"]
+
+    get_resp = client.get(f"/api/v1/sentiment/upload-file/{upload_id}")
+    assert get_resp.status_code == 200
+    data = get_resp.json()["data"]
+    assert data["upload_id"] == upload_id
+    assert data["n_classified"] == 1
+    assert "expires_at" in data
+
+
+def test_upload_file_unknown_id_returns_404(client):
+    resp = client.get("/api/v1/sentiment/upload-file/does-not-exist")
+    assert resp.status_code == 404
 
 
 def test_upload_file_rejects_file_with_no_text_column(client):

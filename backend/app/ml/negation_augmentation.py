@@ -8,15 +8,30 @@ its pretraining; CNN2D only learns it from patterns actually present in its
 OWN training data, and negation cues are underrepresented in the Olist
 training split.
 
-This module pulls a small, negation-rich sample from an external, larger,
-different-domain review corpus (Datafiniti's Amazon Consumer Reviews
-dataset -- https://data.world/datafiniti/consumer-reviews-of-amazon-products,
-not redistributed here in full; only the small derived sample this module
-produces is saved to `data/interim/negation_augmentation_sample.csv`) and
-mixes it into CNN2D's training data at a configurable negated/ordinary ratio,
-so the model sees enough real "not X" / "isn't X" / "n't X" examples --
-of BOTH polarities -- to learn that negation flips sentiment, rather than
-learning "negation cue -> always negative".
+This module pulls a small, negation-rich sample from a larger, different-
+domain review corpus and mixes it into CNN2D's training data at a
+configurable negated/ordinary ratio, so the model sees enough real
+"not X" / "isn't X" / "n't X" examples -- of BOTH polarities -- to learn
+that negation flips sentiment, rather than learning "negation cue -> always
+negative". Two source corpora are supported:
+
+1. Datafiniti's Amazon Consumer Reviews dataset (`load_amazon_reviews` +
+   `build_sentiment_labels`, ~45K rows, star ratings). Small: only 1,841 of
+   44,824 rows are negative-labeled, capping any negated-negative sample at
+   ~987 rows -- an earlier iteration using only this source measurably
+   improved CNN2D's negation calibration but did not fully fix idioms like
+   "not bad" (verified: p_positive moved 0.028 -> 0.116, still < 0.5).
+2. The Amazon Reviews Polarity dataset (`load_amazon_polarity_dataset`,
+   Xiang Zhang et al. 2015, via its HuggingFace mirror
+   `fancyzhx/amazon_polarity` -- the same corpus as
+   kaggle.com/datasets/kritanjalijain/amazon-reviews), already binary-
+   labeled and NOT skewed: one 900K-row shard alone has ~300K negated-
+   negative rows, ~300x more than Datafiniti. Used for the second,
+   substantially larger-scale retraining attempt.
+
+Only the small derived augmentation sample this module actually trains on
+is saved to `data/interim/negation_augmentation_sample.csv` -- the full
+source corpora are not redistributed in this repo.
 
 The Olist validation/test splits are NEVER touched by this augmentation --
 only the CNN2D TRAIN partition is augmented, so reported test metrics remain
@@ -56,6 +71,27 @@ def load_amazon_reviews(paths: list[str | Path]) -> pd.DataFrame:
     combined = combined.dropna(subset=["text", "rating"])
     combined = combined.drop_duplicates(subset=["text"]).reset_index(drop=True)
     return combined
+
+
+def load_amazon_polarity_dataset(paths: list[str | Path]) -> pd.DataFrame:
+    """Load one or more `fancyzhx/amazon_polarity` parquet shards (columns:
+    label [0=negative, 1=positive], title, content). Already binary-labeled
+    and near-perfectly class-balanced -- no star-rating conversion needed."""
+    frames = []
+    for p in paths:
+        p = Path(p)
+        if not p.is_file():
+            continue
+        df = pd.read_parquet(p, columns=["label", "content"])
+        frames.append(df)
+    if not frames:
+        raise FileNotFoundError(f"None of the provided Amazon Polarity parquet paths exist: {paths}")
+    combined = pd.concat(frames, ignore_index=True)
+    combined = combined.rename(columns={"content": "text"})
+    combined = combined.dropna(subset=["text", "label"])
+    combined = combined[combined["text"].astype(str).str.strip().str.len() > 0]
+    combined = combined.drop_duplicates(subset=["text"]).reset_index(drop=True)
+    return combined[["text", "label"]]
 
 
 def build_sentiment_labels(amazon_df: pd.DataFrame) -> pd.DataFrame:

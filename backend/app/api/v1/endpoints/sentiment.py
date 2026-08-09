@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
-from app.core.exceptions import InvalidRequestError
+from app.core.exceptions import InvalidRequestError, ResourceNotFoundError
 from app.dependencies import get_model_registry
 from app.schemas.common import envelope
 from app.schemas.sentiment import BatchPredictionRequest, ExplainRequest, FullPipelineRequest, ModelName, SentimentPredictionRequest
-from app.services import advanced_sentiment_service, file_batch_service, sentiment_service
+from app.services import advanced_sentiment_service, file_batch_service, sentiment_service, upload_store
 from app.services.model_registry import ModelRegistry
 
 router = APIRouter(prefix="/sentiment", tags=["sentiment"])
@@ -84,4 +84,15 @@ async def upload_file(
         raise InvalidRequestError("The uploaded file is empty.")
 
     result = file_batch_service.classify_review_file(registry, file.filename, content, model_name=model_name)
-    return envelope(result, model_version=model_name)
+    upload_id = upload_store.save_upload_result(result)
+    return envelope({**result, "upload_id": upload_id, "retention_days": upload_store.RETENTION_DAYS}, model_version=model_name)
+
+
+@router.get("/upload-file/{upload_id}")
+def get_uploaded_result(upload_id: str):
+    """Retrieves a previously classified file's results (kept for 7 days), so
+    reloading the page or coming back later doesn't require re-uploading."""
+    saved = upload_store.load_upload_result(upload_id)
+    if saved is None:
+        raise ResourceNotFoundError(f"No saved upload found for id '{upload_id}' (not found, or its 7-day retention expired).")
+    return envelope({**saved["result"], "upload_id": saved["upload_id"], "created_at": saved["created_at"], "expires_at": saved["expires_at"]})

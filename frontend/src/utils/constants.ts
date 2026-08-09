@@ -1,4 +1,4 @@
-export const APP_NAME = "بصيرة";
+export const APP_NAME = "Baseera";
 export const APP_TAGLINE = "Customer review intelligence for the Olist marketplace";
 
 export const MODEL_OPTIONS = [

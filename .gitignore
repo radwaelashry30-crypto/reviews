@@ -31,6 +31,7 @@ frontend/.env
 # usable. Re-download/regenerate via data/README.md if you need them.
 data/raw/
 data/interim/
+data/uploads/
 notebooks/*.ipynb
 output/
 results/rfm_cluster_summary.csv

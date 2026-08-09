@@ -122,5 +122,9 @@ export interface FileUploadResponse {
   n_skipped_empty_or_error: number;
   positive_pct: number;
   negative_pct: number;
+  upload_id?: string;
+  retention_days?: number;
+  created_at?: string;
+  expires_at?: string;
   results: FileRowResult[];
 }

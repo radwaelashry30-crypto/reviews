@@ -73,4 +73,22 @@ On a fair, identical, leakage-corrected test set, **BERT is the stronger model o
 **Practical consequence**: on this project's own deployed backend (Render free tier, 512MB RAM), `ENABLE_BERT=false` — the public site currently serves CNN2D-only, so this exact failure mode is user-visible there. Locally / on a host with enough RAM for BERT, this class of input is already handled correctly by the primary model.
 
 Applied to the shipped `models/cnn2d_review_sentiment.pt` + `artifacts/cnn2d_tokenizer.pkl` since it is a strict, measured improvement (better accuracy, better F1, no case that got worse) with no regression. Full before/after data: `results/cnn2d_negation_augmentation_report.json`. Reproduce with `python backend/scripts/retrain_cnn2d_negation_augmented.py --apply`.
+
+## 6. Follow-up: does a much larger negation corpus fix it? (2026-08-09)
+
+**Hypothesis tested**: §5's Datafiniti source is small (44,824 rows, only 1,841 negative-labeled, capping the negated-negative pool at 987). A user-suggested follow-up: pull negation examples from a far larger, perfectly class-balanced Amazon review corpus and see whether more data closes the remaining gap. `app/ml/negation_augmentation.load_amazon_polarity_dataset` was added for the Amazon Reviews Polarity dataset (Zhang et al. 2015; downloaded via its HuggingFace mirror `fancyzhx/amazon_polarity`, same underlying corpus as `kaggle.com/datasets/kritanjalijain/amazon-reviews`) — one 900K-row shard alone has **300,023 negated-negative rows**, ~300x more than Datafiniti's entire negative pool.
+
+Two configurations were trained and evaluated against the same Olist test set and hand-crafted negation eval set as §5:
+
+| Configuration | Combined train size | Olist test accuracy | Olist test F1-macro | Negation eval | "not bad" p_positive |
+|---|---|---|---|---|---|
+| §5 baseline (no augmentation) | 22,038 | 0.9192 | 0.9074 | — | 0.028 |
+| **§5, deployed** (Datafiniti, 3,682 rows, 4x negated oversample) | 31,642 | **0.9201** | **0.9127** | 7/10 | 0.116 |
+| Polarity, 60,000-row augmentation (36,000 negated) | 82,038 | 0.9136 | 0.9053 | 7/10 | 0.189 |
+| Polarity, 25,000-row augmentation (15,000 negated) | 47,038 | 0.9119 | 0.9040 | **6/10** | 0.083 |
+
+**Finding: more data did NOT beat the deployed checkpoint.** Both Polarity configurations score *worse* than §5 on the primary Olist test metrics — because Amazon Polarity is a different domain (general e-commerce/media reviews, not Olist's Brazilian marketplace text), and at 25K-60K augmented rows it outweighs Olist's own 22,038 training rows in the combined mix (52-73% non-Olist), diluting the in-domain signal. The 60K run's `p_positive` for "not bad" did move further toward correct (0.189 vs. 0.116) and the 25K run's negation accuracy dropped to 6/10 — the relationship between augmentation volume and negation-idiom correctness is not monotonic across these runs, and neither crosses the 0.5 decision threshold on "not bad" / "not late" / "not terrible" regardless of data volume.
+
+**Conclusion**: this specific failure mode (a single strong-polarity word like "bad"/"terrible" overpowering a short "not X" n-gram filter) is a genuine architectural ceiling for a from-scratch, ~3M-parameter n-gram CNN — not a data-scarcity problem fixable by throwing a larger corpus at it, and doing so trades away Olist-domain accuracy for an incomplete fix. **The §5 checkpoint remains deployed** (`models/cnn2d_review_sentiment.pt` was NOT overwritten by this experiment — both Polarity runs were dry runs, `--apply` was never passed). BERT is the reliable answer for this input class; it already handles all three idioms correctly. Full data: `results/cnn2d_negation_augmentation_report.json` (latest run overwrites the file — the numbers above are preserved here since the JSON only reflects the most recent invocation).
+
 - It does not claim CNN2D is a bad model — 0.92 accuracy on a corrected, leakage-free split with a ~3M-parameter from-scratch architecture trained in 155 seconds is a strong result for its class.

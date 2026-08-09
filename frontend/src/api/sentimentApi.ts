@@ -1,4 +1,4 @@
-import { apiPost, apiPostFile } from "./client";
+import { apiGet, apiPost, apiPostFile } from "./client";
 import type {
   BatchPredictionRequest, BatchPredictionResponse, ExplainResponse, FileUploadResponse, FullPipelineRequest,
   FullPipelineResponse, ModelName, SentimentPrediction, SentimentPredictionRequest,
@@ -25,4 +25,9 @@ export function uploadReviewFile(file: File, modelName: ModelName): Promise<File
   formData.append("file", file);
   formData.append("model_name", modelName);
   return apiPostFile<FileUploadResponse>("/sentiment/upload-file", formData);
+}
+
+/** Retrieves a previously classified upload (kept 7 days) without re-uploading. */
+export function getUploadedResult(uploadId: string): Promise<FileUploadResponse> {
+  return apiGet<FileUploadResponse>(`/sentiment/upload-file/${uploadId}`);
 }

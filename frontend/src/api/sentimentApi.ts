@@ -1,7 +1,7 @@
-import { apiPost } from "./client";
+import { apiPost, apiPostFile } from "./client";
 import type {
-  BatchPredictionRequest, BatchPredictionResponse, ExplainResponse, FullPipelineRequest, FullPipelineResponse,
-  SentimentPrediction, SentimentPredictionRequest,
+  BatchPredictionRequest, BatchPredictionResponse, ExplainResponse, FileUploadResponse, FullPipelineRequest,
+  FullPipelineResponse, ModelName, SentimentPrediction, SentimentPredictionRequest,
 } from "../types/sentiment";
 
 export function predictSentiment(request: SentimentPredictionRequest): Promise<SentimentPrediction> {
@@ -18,4 +18,11 @@ export function analyzeFullPipeline(request: FullPipelineRequest): Promise<FullP
 
 export function explainSentiment(text: string): Promise<ExplainResponse> {
   return apiPost<ExplainResponse>("/sentiment/explain", { text });
+}
+
+export function uploadReviewFile(file: File, modelName: ModelName): Promise<FileUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("model_name", modelName);
+  return apiPostFile<FileUploadResponse>("/sentiment/upload-file", formData);
 }

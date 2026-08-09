@@ -1,5 +1,6 @@
 import { Route, BrowserRouter, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { BatchUploadPage } from "./pages/BatchUploadPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { GeographyPage } from "./pages/GeographyPage";
@@ -15,6 +16,7 @@ export function App() {
         <Route element={<Layout />}>
           <Route index element={<DashboardPage />} />
           <Route path="sentiment" element={<SentimentPage />} />
+          <Route path="batch-upload" element={<BatchUploadPage />} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="sellers" element={<SellersPage />} />
           <Route path="products" element={<ProductsPage />} />

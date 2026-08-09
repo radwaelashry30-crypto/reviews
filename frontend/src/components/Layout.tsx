@@ -5,6 +5,7 @@ import { APP_NAME, APP_TAGLINE } from "../utils/constants";
 const NAV_ITEMS = [
   { to: "/", label: "Overview" },
   { to: "/sentiment", label: "Review Analyzer" },
+  { to: "/batch-upload", label: "Batch Upload" },
   { to: "/customers", label: "Customers" },
   { to: "/sellers", label: "Sellers" },
   { to: "/products", label: "Products" },

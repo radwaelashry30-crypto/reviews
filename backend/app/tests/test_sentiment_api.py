@@ -130,6 +130,60 @@ def test_explain_degrades_gracefully_without_shap_or_bert(client):
         assert data.get("reason")
 
 
+def test_upload_file_rejects_unsupported_extension(client):
+    resp = client.post(
+        "/api/v1/sentiment/upload-file",
+        files={"file": ("reviews.txt", b"some text", "text/plain")},
+        data={"model_name": "cnn2d"},
+    )
+    assert resp.status_code == 400
+
+
+def test_upload_file_rejects_empty_file(client):
+    resp = client.post(
+        "/api/v1/sentiment/upload-file",
+        files={"file": ("reviews.csv", b"", "text/csv")},
+        data={"model_name": "cnn2d"},
+    )
+    assert resp.status_code == 400
+
+
+def test_upload_file_classifies_csv_rows(client):
+    if not _cnn_available(client):
+        pytest.skip("CNN2D artifact not available in this environment.")
+    csv_content = (
+        b"review_comment_message_en,other_col\n"
+        b'"Fast delivery and great quality, very happy!",x\n'
+        b'"Terrible product, broke after one day.",y\n'
+        b",z\n"  # empty text row, should be skipped
+    )
+    resp = client.post(
+        "/api/v1/sentiment/upload-file",
+        files={"file": ("reviews.csv", csv_content, "text/csv")},
+        data={"model_name": "cnn2d"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["text_column_used"] == "review_comment_message_en"
+    assert data["total_rows_in_file"] == 3
+    assert data["n_classified"] == 2
+    assert data["n_skipped_empty_or_error"] == 1
+    assert data["n_positive"] + data["n_negative"] == 2
+    assert len(data["results"]) == 2
+
+
+def test_upload_file_rejects_file_with_no_text_column(client):
+    if not _cnn_available(client):
+        pytest.skip("CNN2D artifact not available in this environment.")
+    csv_content = b"a,b\n1,2\n3,4\n"
+    resp = client.post(
+        "/api/v1/sentiment/upload-file",
+        files={"file": ("data.csv", csv_content, "text/csv")},
+        data={"model_name": "cnn2d"},
+    )
+    assert resp.status_code == 400
+
+
 def test_predict_translation_disabled_by_default(client):
     resp = client.post(
         "/api/v1/sentiment/predict",

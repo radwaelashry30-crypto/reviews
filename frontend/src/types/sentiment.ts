@@ -95,3 +95,32 @@ export interface ExplainResponse {
   reason?: string;
   top_tokens_toward_positive?: TokenContribution[];
 }
+
+// -- CSV/Excel batch file upload --
+
+export interface FileRowResult {
+  row: number;
+  text: string;
+  label: "Positive" | "Negative" | "ERROR";
+  confidence?: number;
+  probability_positive?: number;
+  probability_negative?: number;
+  error?: string;
+}
+
+export interface FileUploadResponse {
+  filename: string;
+  text_column_used: string;
+  model_name: string;
+  total_rows_in_file: number;
+  rows_processed: number;
+  truncated: boolean;
+  max_rows_supported: number;
+  n_classified: number;
+  n_positive: number;
+  n_negative: number;
+  n_skipped_empty_or_error: number;
+  positive_pct: number;
+  negative_pct: number;
+  results: FileRowResult[];
+}

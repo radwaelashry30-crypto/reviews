@@ -77,3 +77,21 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     throw toApiClientError(error);
   }
 }
+
+/** multipart/form-data upload -- clears the default JSON Content-Type so the
+ * browser sets the correct multipart boundary itself. No cold-start retry
+ * (a file upload isn't safely re-sendable mid-stream the way a small JSON
+ * body is); file processing can also legitimately take longer than a normal
+ * request, so this uses a longer timeout. */
+export async function apiPostFile<T>(path: string, formData: FormData): Promise<T> {
+  try {
+    const resp = await httpClient.post<ApiResponse<T>>(path, formData, {
+      headers: { "Content-Type": undefined },
+      timeout: 120_000,
+    });
+    return resp.data.data;
+  } catch (error) {
+    if (import.meta.env.DEV) console.error(`POST ${path} (file) failed`, error);
+    throw toApiClientError(error);
+  }
+}

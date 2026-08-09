@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 
+from app.core.exceptions import InvalidRequestError
 from app.dependencies import get_model_registry
 from app.schemas.common import envelope
-from app.schemas.sentiment import BatchPredictionRequest, ExplainRequest, FullPipelineRequest, SentimentPredictionRequest
-from app.services import advanced_sentiment_service, sentiment_service
+from app.schemas.sentiment import BatchPredictionRequest, ExplainRequest, FullPipelineRequest, ModelName, SentimentPredictionRequest
+from app.services import advanced_sentiment_service, file_batch_service, sentiment_service
 from app.services.model_registry import ModelRegistry
 
 router = APIRouter(prefix="/sentiment", tags=["sentiment"])
@@ -62,3 +63,25 @@ def explain(payload: ExplainRequest, registry: ModelRegistry = Depends(get_model
 
     result = explain_single_review(explainer, registry.bert_model, payload.text)
     return envelope(result, model_version="bert")
+
+
+@router.post("/upload-file")
+async def upload_file(
+    file: UploadFile = File(...),
+    model_name: ModelName = Form("bert"),
+    registry: ModelRegistry = Depends(get_model_registry),
+):
+    """Batch-classify every review row in an uploaded CSV/XLSX file.
+
+    Auto-detects the review-text column (see file_batch_service.TEXT_COLUMN_CANDIDATES).
+    Processes synchronously, capped at file_batch_service.MAX_FILE_ROWS rows.
+    """
+    if not file.filename or not file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
+        raise InvalidRequestError("Upload a .csv or .xlsx file.")
+
+    content = await file.read()
+    if not content:
+        raise InvalidRequestError("The uploaded file is empty.")
+
+    result = file_batch_service.classify_review_file(registry, file.filename, content, model_name=model_name)
+    return envelope(result, model_version=model_name)

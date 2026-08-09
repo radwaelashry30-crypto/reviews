@@ -1,7 +1,10 @@
 import { useState } from "react";
 import * as sentimentApi from "../api/sentimentApi";
 import { ApiClientError } from "../types/api";
-import type { ExplainResponse, FullPipelineRequest, FullPipelineResponse, SentimentPrediction, SentimentPredictionRequest } from "../types/sentiment";
+import type {
+  ExplainResponse, FileUploadResponse, FullPipelineRequest, FullPipelineResponse, ModelName,
+  SentimentPrediction, SentimentPredictionRequest,
+} from "../types/sentiment";
 
 export function useSentimentPrediction() {
   const [result, setResult] = useState<SentimentPrediction | null>(null);
@@ -74,4 +77,27 @@ export function useExplanation() {
   }
 
   return { result, loading, error, explain, reset };
+}
+
+/** CSV/Excel batch review upload. */
+export function useFileUpload() {
+  const [result, setResult] = useState<FileUploadResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<ApiClientError | null>(null);
+
+  async function upload(file: File, modelName: ModelName) {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const data = await sentimentApi.uploadReviewFile(file, modelName);
+      setResult(data);
+    } catch (e) {
+      setError(e as ApiClientError);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return { result, loading, error, upload };
 }

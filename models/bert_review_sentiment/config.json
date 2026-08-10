@@ -1,15 +1,12 @@
 {
   "_num_labels": 5,
-  "add_cross_attention": false,
   "architectures": [
     "BertForSequenceClassification"
   ],
   "attention_probs_dropout_prob": 0.1,
-  "bos_token_id": null,
   "classifier_dropout": null,
   "directionality": "bidi",
   "dtype": "float32",
-  "eos_token_id": null,
   "finetuning_task": "sentiment-analysis",
   "hidden_act": "gelu",
   "hidden_dropout_prob": 0.1,
@@ -20,7 +17,6 @@
   },
   "initializer_range": 0.02,
   "intermediate_size": 3072,
-  "is_decoder": false,
   "label2id": {
     "Negative": 0,
     "Positive": 1
@@ -39,8 +35,7 @@
   "pooler_type": "first_token_transform",
   "position_embedding_type": "absolute",
   "problem_type": "single_label_classification",
-  "tie_word_embeddings": true,
-  "transformers_version": "5.14.1",
+  "transformers_version": "4.57.6",
   "type_vocab_size": 2,
   "use_cache": true,
   "vocab_size": 105879

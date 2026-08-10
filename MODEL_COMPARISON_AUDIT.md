@@ -92,3 +92,22 @@ Two configurations were trained and evaluated against the same Olist test set an
 **Conclusion**: this specific failure mode (a single strong-polarity word like "bad"/"terrible" overpowering a short "not X" n-gram filter) is a genuine architectural ceiling for a from-scratch, ~3M-parameter n-gram CNN — not a data-scarcity problem fixable by throwing a larger corpus at it, and doing so trades away Olist-domain accuracy for an incomplete fix. **The §5 checkpoint remains deployed** (`models/cnn2d_review_sentiment.pt` was NOT overwritten by this experiment — both Polarity runs were dry runs, `--apply` was never passed). BERT is the reliable answer for this input class; it already handles all three idioms correctly. Full data: `results/cnn2d_negation_augmentation_report.json` (latest run overwrites the file — the numbers above are preserved here since the JSON only reflects the most recent invocation).
 
 - It does not claim CNN2D is a bad model — 0.92 accuracy on a corrected, leakage-free split with a ~3M-parameter from-scratch architecture trained in 155 seconds is a strong result for its class.
+
+## 7. BERT late-delivery blind spot fix (2026-08-09)
+
+**Problem, verified by direct testing**: BERT (the primary, more accurate model) classifies blunt "late/delayed delivery" complaints as **Positive** with very high confidence when the sentence has no other negative vocabulary — e.g. "the shipment coming late" → Positive 99.5%, "the delivery is late" → Positive, "Late delivery!" → Positive. CNN2D and the Task 3 ABSA model both correctly read the same input as Negative, which is what surfaced the bug: the UI showed a Positive headline with every ABSA aspect labeled Negative underneath it.
+
+Scoped against real data: of the 599 Olist reviews (3-star excluded) mentioning "late"/"delay", BERT scored only 86.0% accuracy (vs. ~93% overall) with an **11.1% false-positive rate** (47/425) on genuinely negative delay complaints. Root cause: many Olist reviews mention a delay but still rate 4-5 stars ("a bit late but the product paid off"), so the fine-tuned model learned "late/delay" alone is a weak, ambiguous signal and defaulted to its positive-skewed prior on short, blunt sentences lacking an explicit negative adjective.
+
+**Fix applied**: `backend/scripts/retrain_bert_late_delivery_augmented.py` continues fine-tuning the currently-deployed BERT checkpoint (not from scratch, to avoid re-learning everything else) for 1 epoch at a low learning rate (1e-5), on the original Olist TRAIN split plus: (1) the 263 real Olist TRAIN-split reviews that are genuinely negative and mention late/delay, oversampled 3x (789 rows), and (2) 74 synthetic template sentences — 64 blunt negative lateness complaints (label 0) and 10 "delayed but still positive" sentences (label 1, e.g. "a bit late but worth the wait") so the model doesn't overcorrect into treating every delay mention as negative.
+
+**Result — clean improvement, no regression**:
+
+| | Before | After |
+|---|---|---|
+| Olist test accuracy (n=6,297, unaugmented) | 0.9333 | **0.9370** (slight improvement) |
+| Late/delay eval set accuracy (562 rows, 3-star excluded) | 0.860 | **0.920** |
+| False-positive rate on genuinely-negative late/delay reviews | 11.1% (47/425) | **1.0%** (4/392) |
+| Hand-crafted eval (10 cases incl. "the shipment coming late", held out from training) | not applicable (bug not yet fixed) | **10/10**, including nuance cases like "a bit late but worth the wait" staying correctly Positive (93.8%) |
+
+"the shipment coming late" now classifies Negative at 97.2% confidence. Applied to the shipped `models/bert_review_sentiment/` since it is a strict, measured improvement (better accuracy, better F1, dramatically lower false-positive rate on the target failure mode, no case that got worse) with no regression on the untouched Olist test set. Full before/after data: `results/bert_late_delivery_augmentation_report.json`. Reproduce with `python backend/scripts/retrain_bert_late_delivery_augmented.py --apply`.

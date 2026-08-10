@@ -1,0 +1,115 @@
+{
+  "generated_at": "2026-08-09T18:44:27.424834+00:00",
+  "schema_version": "1.0",
+  "augmentation": {
+    "real_train_negatives_found": 263,
+    "negative_oversample": 3,
+    "synthetic_negative_templates": 64,
+    "synthetic_positive_templates": 10,
+    "combined_train_size": 22901
+  },
+  "training": {
+    "epochs": 1,
+    "learning_rate": 1e-05,
+    "batch_size": 16,
+    "train_time_seconds": 3251.5668058395386
+  },
+  "olist_test_metrics_new": {
+    "accuracy": 0.9369541051294267,
+    "precision_macro": 0.9263215033159757,
+    "recall_macro": 0.9348166753137565,
+    "f1_macro": 0.9303123822149276,
+    "roc_auc": 0.9796600398344354,
+    "pr_auc": 0.9884588505804244,
+    "mcc": 0.8610962749579519,
+    "loss": null,
+    "n_samples": 6297
+  },
+  "late_delay_eval_metrics_new": {
+    "accuracy": 0.9199288256227758,
+    "precision_macro": 0.9371768582294898,
+    "recall_macro": 0.8743097238895559,
+    "f1_macro": 0.8983369713341613,
+    "roc_auc": 0.9632202881152461,
+    "pr_auc": 0.9477759420950644,
+    "mcc": 0.8090477095815396,
+    "loss": null,
+    "n_samples": 562
+  },
+  "late_delay_eval_size": 562,
+  "late_delay_false_positive_rate_new": 0.01020408163265306,
+  "hand_crafted_eval_accuracy": 1.0,
+  "hand_crafted_eval_details": [
+    {
+      "text": "the shipment coming late",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.0277,
+      "correct": true
+    },
+    {
+      "text": "the delivery is late",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.0241,
+      "correct": true
+    },
+    {
+      "text": "Late delivery!",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.0169,
+      "correct": true
+    },
+    {
+      "text": "shipment came late",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.0325,
+      "correct": true
+    },
+    {
+      "text": "delivery coming late",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.025,
+      "correct": true
+    },
+    {
+      "text": "Delivery was too late, I was already cancelling.",
+      "expected": 0,
+      "predicted": 0,
+      "prob_positive": 0.0226,
+      "correct": true
+    },
+    {
+      "text": "a bit late but worth the wait",
+      "expected": 1,
+      "predicted": 1,
+      "prob_positive": 0.9379,
+      "correct": true
+    },
+    {
+      "text": "the delivery was late but the product is excellent",
+      "expected": 1,
+      "predicted": 1,
+      "prob_positive": 0.9776,
+      "correct": true
+    },
+    {
+      "text": "the shipment arrived on time and works perfectly",
+      "expected": 1,
+      "predicted": 1,
+      "prob_positive": 0.9977,
+      "correct": true
+    },
+    {
+      "text": "Excellent product, arrived early.",
+      "expected": 1,
+      "predicted": 1,
+      "prob_positive": 0.9983,
+      "correct": true
+    }
+  ],
+  "applied": true
+}

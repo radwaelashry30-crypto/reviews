@@ -1,11 +1,17 @@
 import { ErrorState } from "../components/ErrorState";
 import { KpiCard } from "../components/KpiCard";
 import { LoadingState } from "../components/LoadingState";
+import { CategoryPerformanceChart } from "../components/charts/CategoryPerformanceChart";
 import { OrdersTrendChart } from "../components/charts/OrdersTrendChart";
+import { PaymentDistributionChart } from "../components/charts/PaymentDistributionChart";
 import { RevenueTrendChart } from "../components/charts/RevenueTrendChart";
 import { ReviewDistributionChart } from "../components/charts/ReviewDistributionChart";
 import { SegmentChart } from "../components/charts/SegmentChart";
-import { useBusinessSummary, useMonthlyOrders, useMonthlyRevenue, useReviewDistribution } from "../hooks/useAnalytics";
+import { TopCitiesChart } from "../components/charts/TopCitiesChart";
+import {
+  useBusinessSummary, useCategoryPerformance, useMonthlyOrders, useMonthlyRevenue, usePaymentDistribution,
+  useReviewDistribution, useTopCities,
+} from "../hooks/useAnalytics";
 import { useRfmSummary } from "../hooks/useSegmentation";
 import { formatCurrency, formatNumber, formatPercent } from "../utils/formatters";
 
@@ -15,6 +21,9 @@ export function DashboardPage() {
   const monthlyRevenue = useMonthlyRevenue();
   const reviewDist = useReviewDistribution();
   const rfm = useRfmSummary();
+  const payments = usePaymentDistribution();
+  const topCities = useTopCities(10);
+  const categories = useCategoryPerformance();
 
   return (
     <div className="page">
@@ -68,6 +77,27 @@ export function DashboardPage() {
           {rfm.loading && <LoadingState />}
           <ErrorState error={rfm.error} />
           {rfm.data && <SegmentChart data={rfm.data.segment_summary} />}
+        </section>
+
+        <section className="chart-card">
+          <h2>Payment Methods</h2>
+          {payments.loading && <LoadingState />}
+          <ErrorState error={payments.error} />
+          {payments.data && <PaymentDistributionChart data={payments.data} />}
+        </section>
+
+        <section className="chart-card">
+          <h2>Top Customer Cities</h2>
+          {topCities.loading && <LoadingState />}
+          <ErrorState error={topCities.error} />
+          {topCities.data && <TopCitiesChart data={topCities.data} />}
+        </section>
+
+        <section className="chart-card" style={{ gridColumn: "1 / -1" }}>
+          <h2>Top Product Categories by Revenue</h2>
+          {categories.loading && <LoadingState />}
+          <ErrorState error={categories.error} />
+          {categories.data && <CategoryPerformanceChart data={categories.data} limit={10} />}
         </section>
       </div>
     </div>

@@ -1,10 +1,68 @@
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
+import { ConfidenceHistogramChart } from "../components/charts/ConfidenceHistogramChart";
+import { SentimentSplitChart } from "../components/charts/SentimentSplitChart";
 import { useFileUpload } from "../hooks/useSentiment";
 import { APP_NAME, MODEL_OPTIONS } from "../utils/constants";
 import { formatNumber, formatPercent } from "../utils/formatters";
 import type { FileRowResult, FileUploadResponse, ModelName } from "../types/sentiment";
+
+const CONFIDENCE_BUCKETS = [
+  { label: "50-60%", min: 0.5, max: 0.6 },
+  { label: "60-70%", min: 0.6, max: 0.7 },
+  { label: "70-80%", min: 0.7, max: 0.8 },
+  { label: "80-90%", min: 0.8, max: 0.9 },
+  { label: "90-100%", min: 0.9, max: 1.01 },
+];
+
+function bucketConfidence(results: FileRowResult[]) {
+  return CONFIDENCE_BUCKETS.map((b) => ({
+    label: b.label,
+    count: results.filter((r) => r.confidence !== undefined && r.confidence >= b.min && r.confidence < b.max).length,
+  }));
+}
+
+/** Hand-built inline SVG donut -- the exported HTML has to render fully
+ * offline with no bundler/CDN, so this draws arcs directly rather than
+ * pulling in a charting library. */
+function svgDonut(nPositive: number, nNegative: number): string {
+  const total = nPositive + nNegative || 1;
+  const cx = 90, cy = 90, r = 65, stroke = 26;
+  const circumference = 2 * Math.PI * r;
+  const posLen = (nPositive / total) * circumference;
+  const negLen = (nNegative / total) * circumference;
+  return `<svg viewBox="0 0 180 180" width="180" height="180">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#241d16" stroke-width="${stroke}" />
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#5cb37a" stroke-width="${stroke}"
+      stroke-dasharray="${posLen} ${circumference - posLen}" stroke-dashoffset="0" transform="rotate(-90 ${cx} ${cy})" />
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#d9705f" stroke-width="${stroke}"
+      stroke-dasharray="${negLen} ${circumference - negLen}" stroke-dashoffset="${-posLen}" transform="rotate(-90 ${cx} ${cy})" />
+    <text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="22" font-weight="700" fill="#f3ede4">${Math.round((nPositive / total) * 100)}%</text>
+    <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-size="10" fill="#766b5c">positive</text>
+  </svg>`;
+}
+
+/** Hand-built inline SVG bar chart for the confidence-bucket histogram, same offline constraint as the donut above. */
+function svgHistogram(buckets: { label: string; count: number }[]): string {
+  const w = 460, h = 160, padLeft = 34, padBottom = 24, barGap = 14;
+  const max = Math.max(1, ...buckets.map((b) => b.count));
+  const barW = (w - padLeft - barGap * (buckets.length - 1)) / buckets.length;
+  const bars = buckets
+    .map((b, i) => {
+      const barH = (b.count / max) * (h - padBottom - 16);
+      const x = padLeft + i * (barW + barGap);
+      const y = h - padBottom - barH;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="#c9992e" />
+        <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 6).toFixed(1)}" text-anchor="middle" font-size="10" fill="#f3ede4">${b.count}</text>
+        <text x="${(x + barW / 2).toFixed(1)}" y="${h - 6}" text-anchor="middle" font-size="9" fill="#766b5c">${b.label}</text>`;
+    })
+    .join("");
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+    <line x1="${padLeft}" y1="${h - padBottom}" x2="${w}" y2="${h - padBottom}" stroke="#322a20" />
+    ${bars}
+  </svg>`;
+}
 
 function resultsToCsv(results: FileRowResult[]): string {
   const header = "row,label,confidence,probability_positive,probability_negative,text\n";
@@ -41,6 +99,8 @@ function buildDashboardHtml(result: FileUploadResponse): string {
         `<tr><td>${r.row}</td><td class="text">${escapeHtml(r.text)}</td><td class="label ${r.label.toLowerCase()}">${r.label}</td><td>${r.confidence !== undefined ? (r.confidence * 100).toFixed(0) + "%" : "—"}</td></tr>`,
     )
     .join("");
+  const donut = svgDonut(result.n_positive, result.n_negative);
+  const histogram = svgHistogram(bucketConfidence(result.results));
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(result.filename)} — ${APP_NAME} report</title>
@@ -52,10 +112,10 @@ function buildDashboardHtml(result: FileUploadResponse): string {
   .kpi { background: #1c1712; border: 1px solid #322a20; border-radius: 14px; padding: 1rem 1.2rem; }
   .kpi .label { color: #766b5c; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; }
   .kpi .value { font-size: 1.6rem; font-weight: 700; margin-top: 0.25rem; }
-  .bar { display: flex; height: 28px; border-radius: 999px; overflow: hidden; max-width: 500px; margin-bottom: 2rem; border: 1px solid #322a20; }
-  .bar .pos { background: #5cb37a; }
-  .bar .neg { background: #d9705f; }
-  .bar span { display: flex; align-items: center; justify-content: center; color: #100e0c; font-size: 0.75rem; font-weight: 700; }
+  .charts-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+  .chart-box { background: #1c1712; border: 1px solid #322a20; border-radius: 14px; padding: 1.2rem 1.4rem; }
+  .chart-box h3 { margin: 0 0 0.8rem; font-size: 0.8rem; color: #a89c8a; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.4rem; }
   table { border-collapse: collapse; width: 100%; max-width: 1000px; font-size: 0.85rem; }
   th, td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid #241d16; }
   th { color: #766b5c; text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.03em; }
@@ -73,9 +133,19 @@ function buildDashboardHtml(result: FileUploadResponse): string {
     <div class="kpi"><div class="label">Negative</div><div class="value" style="color:#d9705f">${negPct.toFixed(1)}%</div></div>
     <div class="kpi"><div class="label">Skipped</div><div class="value">${result.n_skipped_empty_or_error.toLocaleString()}</div></div>
   </div>
-  <div class="bar">
-    <span class="pos" style="width:${posPct}%">${posPct >= 8 ? posPct.toFixed(0) + "%" : ""}</span>
-    <span class="neg" style="width:${negPct}%">${negPct >= 8 ? negPct.toFixed(0) + "%" : ""}</span>
+  <div class="charts-row">
+    <div class="chart-box">
+      <h3>Sentiment Split</h3>
+      ${donut}
+      <div style="margin-top:0.6rem;font-size:0.78rem;color:#a89c8a;">
+        <div><span class="legend-dot" style="background:#5cb37a"></span>Positive — ${result.n_positive.toLocaleString()}</div>
+        <div><span class="legend-dot" style="background:#d9705f"></span>Negative — ${result.n_negative.toLocaleString()}</div>
+      </div>
+    </div>
+    <div class="chart-box">
+      <h3>Confidence Distribution</h3>
+      ${histogram}
+    </div>
   </div>
   <table>
     <thead><tr><th>Row</th><th>Text</th><th>Label</th><th>Confidence</th></tr></thead>
@@ -180,6 +250,17 @@ export function BatchUploadPage() {
               <div className="kpi-value">{formatNumber(result.n_skipped_empty_or_error)}</div>
               <div className="kpi-sub">empty or errored rows</div>
             </div>
+          </div>
+
+          <div className="chart-grid" style={{ marginBottom: "1.75rem" }}>
+            <section className="chart-card">
+              <h2>Sentiment Split</h2>
+              <SentimentSplitChart nPositive={result.n_positive} nNegative={result.n_negative} />
+            </section>
+            <section className="chart-card">
+              <h2>Confidence Distribution</h2>
+              <ConfidenceHistogramChart results={result.results} />
+            </section>
           </div>
 
           <div className="chart-card">

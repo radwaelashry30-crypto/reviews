@@ -14,10 +14,10 @@
   --text-muted: #a89c8a;
   --text-faint: #766b5c;
 
-  --accent: #e8863c;
-  --accent-strong: #f2a35f;
-  --accent-soft: rgba(232, 134, 60, 0.14);
-  --accent-border: rgba(232, 134, 60, 0.35);
+  --accent: #c9992e;
+  --accent-strong: #e8c468;
+  --accent-soft: rgba(201, 153, 46, 0.14);
+  --accent-border: rgba(201, 153, 46, 0.35);
 
   --positive: #5cb37a;
   --positive-soft: rgba(92, 179, 122, 0.14);
@@ -44,7 +44,7 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 480px at 12% -10%, rgba(232, 134, 60, 0.10), transparent 60%),
+    radial-gradient(1200px 480px at 12% -10%, rgba(201, 153, 46, 0.10), transparent 60%),
     radial-gradient(900px 420px at 100% 0%, rgba(92, 179, 122, 0.06), transparent 55%),
     var(--bg);
   color: var(--text);

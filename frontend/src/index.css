@@ -94,6 +94,11 @@ body {
 .page h1 { margin: 0 0 0.35rem; font-family: var(--font-display); font-weight: 600; font-size: 1.9rem; letter-spacing: -0.01em; }
 .page-subtitle { color: var(--text-muted); max-width: 640px; line-height: 1.55; margin: 0 0 1.75rem; font-size: 0.95rem; }
 
+.hero-brand { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.hero-brand-logo { height: 220px; width: auto; flex-shrink: 0; filter: drop-shadow(0 12px 28px rgba(201, 153, 46, 0.18)); }
+.hero-brand .page-subtitle { margin-bottom: 0; }
+@media (max-width: 640px) { .hero-brand-logo { height: 140px; } }
+
 .eyebrow {
   display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem;
   font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;

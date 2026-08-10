@@ -27,9 +27,14 @@ export function DashboardPage() {
 
   return (
     <div className="page">
-      <span className="eyebrow">Overview</span>
-      <h1>How the marketplace is doing</h1>
-      <p className="page-subtitle">Live figures from Olist's order, customer, and review data — grain-corrected, not row-inflated.</p>
+      <div className="hero-brand">
+        <img src="/baseera-logo-full.png" alt="Baseera — See beyond the stars" className="hero-brand-logo" />
+        <div>
+          <span className="eyebrow">Overview</span>
+          <h1>How the marketplace is doing</h1>
+          <p className="page-subtitle">Live figures from Olist's order, customer, and review data — grain-corrected, not row-inflated.</p>
+        </div>
+      </div>
 
       {summary.loading && <LoadingState label="Loading KPIs..." />}
       <ErrorState error={summary.error} />

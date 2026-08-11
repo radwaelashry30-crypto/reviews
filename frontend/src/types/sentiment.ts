@@ -108,6 +108,43 @@ export interface FileRowResult {
   error?: string;
 }
 
+export interface TopWords {
+  top_positive_words: { word: string; count: number }[];
+  top_negative_words: { word: string; count: number }[];
+}
+
+export interface TimeTrendPoint {
+  period: string;
+  n: number;
+  positive_pct: number;
+}
+
+export type TimeTrend =
+  | { available: true; granularity: "week"; date_column_used: string; points: TimeTrendPoint[] }
+  | { available: false; reason: string };
+
+export type FakeReviewSummary =
+  | {
+      available: true;
+      n_screened_negative: number;
+      n_flagged_fake: number;
+      flagged_pct: number;
+      methodology_note: string;
+    }
+  | { available: false; reason: string };
+
+export interface AspectSummaryRow {
+  aspect: string;
+  n: number;
+  positive_pct: number;
+  neutral_pct: number;
+  negative_pct: number;
+}
+
+export type AspectSummary =
+  | { available: true; sample_size: number; per_aspect: AspectSummaryRow[]; methodology_note: string }
+  | { available: false; reason: string };
+
 export interface FileUploadResponse {
   filename: string;
   text_column_used: string;
@@ -127,4 +164,9 @@ export interface FileUploadResponse {
   created_at?: string;
   expires_at?: string;
   results: FileRowResult[];
+  top_words?: TopWords;
+  time_trend?: TimeTrend;
+  advanced_sample_size?: number;
+  fake_review_summary?: FakeReviewSummary;
+  aspect_summary?: AspectSummary;
 }

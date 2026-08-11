@@ -1,8 +1,10 @@
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
+import { AspectBreakdownChart } from "../components/charts/AspectBreakdownChart";
 import { ConfidenceHistogramChart } from "../components/charts/ConfidenceHistogramChart";
 import { SentimentSplitChart } from "../components/charts/SentimentSplitChart";
+import { SentimentTrendChart } from "../components/charts/SentimentTrendChart";
 import { useFileUpload } from "../hooks/useSentiment";
 import { APP_NAME, MODEL_OPTIONS } from "../utils/constants";
 import { formatNumber, formatPercent } from "../utils/formatters";
@@ -85,13 +87,78 @@ function downloadBlob(filename: string, content: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+
+/** Word-chip lists for the offline export -- mirrors the "Most Influential Words" page section. */
+function buildTopWordsHtml(result: FileUploadResponse): string {
+  const words = result.top_words;
+  if (!words || (words.top_positive_words.length === 0 && words.top_negative_words.length === 0)) return "";
+  const chips = (items: { word: string; count: number }[], cls: string) =>
+    items.map((w) => `<span class="word-chip ${cls}" title="${w.count} occurrences">${escapeHtml(w.word)}</span>`).join("");
+  return `<div class="chart-box" style="margin-bottom:2rem;max-width:1000px;">
+    <h3>Most Influential Words</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:1.2rem;">
+      <div><div class="label" style="color:#5cb37a;">Positive-leaning</div><div class="word-chips">${chips(words.top_positive_words, "positive")}</div></div>
+      <div><div class="label" style="color:#d9705f;">Negative-leaning</div><div class="word-chips">${chips(words.top_negative_words, "negative")}</div></div>
+    </div>
+  </div>`;
+}
+
+/** Weekly positive-rate table for the offline export -- a table rather than a
+ * full inline SVG line chart, to keep this hand-rolled export simple. */
+function buildTimeTrendHtml(result: FileUploadResponse): string {
+  const trend = result.time_trend;
+  if (!trend?.available) return "";
+  const rows = trend.points
+    .map((p) => `<tr><td>${escapeHtml(p.period)}</td><td>${p.n.toLocaleString()}</td><td>${p.positive_pct.toFixed(1)}%</td></tr>`)
+    .join("");
+  return `<div class="chart-box" style="margin-bottom:2rem;max-width:1000px;">
+    <h3>Sentiment Trend (${escapeHtml(trend.date_column_used)})</h3>
+    <table><thead><tr><th>Week</th><th>Reviews</th><th>% Positive</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+}
+
+/** Fake-review + aspect summary for the offline export, only present when the
+ * upload ran with advanced=true. */
+function buildAdvancedSummaryHtml(result: FileUploadResponse): string {
+  const fake = result.fake_review_summary;
+  const aspects = result.aspect_summary;
+  if (!fake && !aspects) return "";
+
+  const fakeHtml = fake
+    ? `<div class="chart-box">
+        <h3>Fake Review Screening</h3>
+        ${
+          fake.available
+            ? `<div class="value" style="color:#d9705f;">${fake.flagged_pct.toFixed(1)}%</div>
+               <div class="note" style="margin-top:0.2rem;">${fake.n_flagged_fake.toLocaleString()} of ${fake.n_screened_negative.toLocaleString()} negative reviews flagged</div>`
+            : `<p class="note">Not available (${escapeHtml(fake.reason)}).</p>`
+        }
+      </div>`
+    : "";
+
+  const aspectsHtml = aspects
+    ? `<div class="chart-box">
+        <h3>Aspect Breakdown</h3>
+        ${
+          aspects.available
+            ? `<table><thead><tr><th>Aspect</th><th>Positive</th><th>Neutral</th><th>Negative</th></tr></thead><tbody>${aspects.per_aspect
+                .map((a) => `<tr><td>${escapeHtml(a.aspect)}</td><td>${a.positive_pct.toFixed(0)}%</td><td>${a.neutral_pct.toFixed(0)}%</td><td>${a.negative_pct.toFixed(0)}%</td></tr>`)
+                .join("")}</tbody></table>`
+            : `<p class="note">Not available (${escapeHtml(aspects.reason)}).</p>`
+        }
+      </div>`
+    : "";
+
+  return `<div class="charts-row">${fakeHtml}${aspectsHtml}</div>`;
+}
+
 /** Self-contained HTML dashboard snapshot for one classified file -- opens
  * and reads fine completely offline, no external assets. Built client-side
  * from data already in memory (no extra backend round-trip). */
 function buildDashboardHtml(result: FileUploadResponse): string {
   const posPct = result.positive_pct;
   const negPct = result.negative_pct;
-  const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
   const rows = result.results
     .slice(0, 500)
     .map(
@@ -123,6 +190,10 @@ function buildDashboardHtml(result: FileUploadResponse): string {
   .label.positive { color: #5cb37a; font-weight: 700; }
   .label.negative { color: #d9705f; font-weight: 700; }
   .note { color: #766b5c; font-size: 0.78rem; margin-top: 1rem; }
+  .word-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.6rem; }
+  .word-chip { padding: 0.2rem 0.55rem; border-radius: 6px; border: 1px solid; font-size: 0.82rem; }
+  .word-chip.positive { border-color: #3c6b4c; background: rgba(92,179,122,0.14); color: #f3ede4; }
+  .word-chip.negative { border-color: #7a3b30; background: rgba(217,112,95,0.14); color: #f3ede4; }
 </style></head>
 <body>
   <h1>${escapeHtml(result.filename)}</h1>
@@ -147,6 +218,9 @@ function buildDashboardHtml(result: FileUploadResponse): string {
       ${histogram}
     </div>
   </div>
+  ${buildTopWordsHtml(result)}
+  ${buildTimeTrendHtml(result)}
+  ${buildAdvancedSummaryHtml(result)}
   <table>
     <thead><tr><th>Row</th><th>Text</th><th>Label</th><th>Confidence</th></tr></thead>
     <tbody>${rows}</tbody>
@@ -159,6 +233,7 @@ function buildDashboardHtml(result: FileUploadResponse): string {
 export function BatchUploadPage() {
   const { result, loading, error, upload, clearSaved } = useFileUpload();
   const [modelName, setModelName] = useState<ModelName>("bert");
+  const [advanced, setAdvanced] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -166,7 +241,7 @@ export function BatchUploadPage() {
   function handleFile(file: File | undefined) {
     if (!file) return;
     setSelectedFile(file);
-    upload(file, modelName);
+    upload(file, modelName, advanced);
   }
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
@@ -190,7 +265,7 @@ export function BatchUploadPage() {
         to 2,000 rows per upload. Results are saved for 7 days, so reloading this page won't lose them.
       </p>
 
-      <div className="upload-row">
+      <div className="upload-row" style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-end" }}>
         <label>
           Model
           <select value={modelName} onChange={(e) => setModelName(e.target.value as ModelName)}>
@@ -198,6 +273,10 @@ export function BatchUploadPage() {
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
+        </label>
+        <label className="checkbox-label" style={{ marginBottom: "0.55rem" }}>
+          <input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} />
+          Advanced analysis (fake-review + aspects — slower, sampled)
         </label>
       </div>
 
@@ -262,6 +341,78 @@ export function BatchUploadPage() {
               <ConfidenceHistogramChart results={result.results} />
             </section>
           </div>
+
+          {result.top_words && (result.top_words.top_positive_words.length > 0 || result.top_words.top_negative_words.length > 0) && (
+            <div className="chart-card" style={{ marginBottom: "1.75rem" }}>
+              <h2>Most Influential Words</h2>
+              <p className="limitations-note" style={{ marginTop: "-0.4rem", marginBottom: "0.9rem" }}>
+                Words that show up disproportionately in Positive vs. Negative reviews in this file (frequency-based, not per-row SHAP).
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
+                <div>
+                  <div className="kpi-label" style={{ color: "var(--positive)" }}>Positive-leaning</div>
+                  <div className="token-chip-list">
+                    {result.top_words.top_positive_words.map((w) => (
+                      <span key={w.word} className="token-chip" style={{ background: "var(--positive-soft)", borderColor: "var(--positive-border)" }} title={`${w.count} occurrences`}>
+                        {w.word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="kpi-label" style={{ color: "var(--negative)" }}>Negative-leaning</div>
+                  <div className="token-chip-list">
+                    {result.top_words.top_negative_words.map((w) => (
+                      <span key={w.word} className="token-chip" style={{ background: "var(--negative-soft)", borderColor: "var(--negative-border)" }} title={`${w.count} occurrences`}>
+                        {w.word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {result.time_trend?.available && (
+            <div className="chart-card" style={{ marginBottom: "1.75rem" }}>
+              <h2>Sentiment Trend ({result.time_trend.date_column_used})</h2>
+              <SentimentTrendChart data={result.time_trend.points} />
+            </div>
+          )}
+
+          {(result.fake_review_summary || result.aspect_summary) && (
+            <div className="chart-grid" style={{ marginBottom: "1.75rem" }}>
+              {result.fake_review_summary && (
+                <section className="chart-card">
+                  <h2>Fake Review Screening</h2>
+                  {result.fake_review_summary.available ? (
+                    <>
+                      <div className="kpi-value" style={{ color: "var(--negative)" }}>{formatPercent(result.fake_review_summary.flagged_pct)}</div>
+                      <div className="kpi-sub">
+                        {formatNumber(result.fake_review_summary.n_flagged_fake)} of {formatNumber(result.fake_review_summary.n_screened_negative)} negative reviews flagged
+                      </div>
+                      <p className="limitations-note" style={{ marginTop: "0.9rem" }}>{result.fake_review_summary.methodology_note}</p>
+                    </>
+                  ) : (
+                    <p className="limitations-note">Not available ({result.fake_review_summary.reason}).</p>
+                  )}
+                </section>
+              )}
+              {result.aspect_summary && (
+                <section className="chart-card">
+                  <h2>Aspect Breakdown</h2>
+                  {result.aspect_summary.available ? (
+                    <>
+                      <AspectBreakdownChart data={result.aspect_summary.per_aspect} />
+                      <p className="limitations-note" style={{ marginTop: "0.9rem" }}>{result.aspect_summary.methodology_note}</p>
+                    </>
+                  ) : (
+                    <p className="limitations-note">Not available ({result.aspect_summary.reason}).</p>
+                  )}
+                </section>
+              )}
+            </div>
+          )}
 
           <div className="chart-card">
             <div className="upload-results-header">

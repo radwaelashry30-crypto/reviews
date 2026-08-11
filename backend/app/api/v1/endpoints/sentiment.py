@@ -69,12 +69,17 @@ def explain(payload: ExplainRequest, registry: ModelRegistry = Depends(get_model
 async def upload_file(
     file: UploadFile = File(...),
     model_name: ModelName = Form("bert"),
+    advanced: bool = Form(False),
     registry: ModelRegistry = Depends(get_model_registry),
 ):
     """Batch-classify every review row in an uploaded CSV/XLSX file.
 
     Auto-detects the review-text column (see file_batch_service.TEXT_COLUMN_CANDIDATES).
     Processes synchronously, capped at file_batch_service.MAX_FILE_ROWS rows.
+
+    `advanced=true` additionally runs fake-review screening and aspect-based
+    sentiment over a bounded sample of rows (file_batch_service.ADVANCED_SAMPLE_SIZE)
+    -- slower, so it's opt-in rather than the default.
     """
     if not file.filename or not file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
         raise InvalidRequestError("Upload a .csv or .xlsx file.")
@@ -83,7 +88,7 @@ async def upload_file(
     if not content:
         raise InvalidRequestError("The uploaded file is empty.")
 
-    result = file_batch_service.classify_review_file(registry, file.filename, content, model_name=model_name)
+    result = file_batch_service.classify_review_file(registry, file.filename, content, model_name=model_name, advanced=advanced)
     upload_id = upload_store.save_upload_result(result)
     return envelope({**result, "upload_id": upload_id, "retention_days": upload_store.RETENTION_DAYS}, model_version=model_name)
 

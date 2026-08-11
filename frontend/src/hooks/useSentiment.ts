@@ -104,12 +104,12 @@ export function useFileUpload() {
       .finally(() => setRestoring(false));
   }, []);
 
-  async function upload(file: File, modelName: ModelName) {
+  async function upload(file: File, modelName: ModelName, advanced = false) {
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const data = await sentimentApi.uploadReviewFile(file, modelName);
+      const data = await sentimentApi.uploadReviewFile(file, modelName, advanced);
       setResult(data);
       if (data.upload_id) localStorage.setItem(LAST_UPLOAD_ID_KEY, data.upload_id);
     } catch (e) {

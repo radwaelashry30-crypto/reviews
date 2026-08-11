@@ -83,11 +83,11 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
  * (a file upload isn't safely re-sendable mid-stream the way a small JSON
  * body is); file processing can also legitimately take longer than a normal
  * request, so this uses a longer timeout. */
-export async function apiPostFile<T>(path: string, formData: FormData): Promise<T> {
+export async function apiPostFile<T>(path: string, formData: FormData, timeoutMs = 120_000): Promise<T> {
   try {
     const resp = await httpClient.post<ApiResponse<T>>(path, formData, {
       headers: { "Content-Type": undefined },
-      timeout: 120_000,
+      timeout: timeoutMs,
     });
     return resp.data.data;
   } catch (error) {

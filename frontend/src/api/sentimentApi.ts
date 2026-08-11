@@ -20,11 +20,17 @@ export function explainSentiment(text: string): Promise<ExplainResponse> {
   return apiPost<ExplainResponse>("/sentiment/explain", { text });
 }
 
-export function uploadReviewFile(file: File, modelName: ModelName): Promise<FileUploadResponse> {
+// Advanced mode runs the full pipeline (fake-review + aspect analysis) over a
+// sample of rows, which is meaningfully slower than the base pass -- give it
+// more room than the default upload timeout.
+const ADVANCED_UPLOAD_TIMEOUT_MS = 300_000;
+
+export function uploadReviewFile(file: File, modelName: ModelName, advanced = false): Promise<FileUploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("model_name", modelName);
-  return apiPostFile<FileUploadResponse>("/sentiment/upload-file", formData);
+  formData.append("advanced", String(advanced));
+  return apiPostFile<FileUploadResponse>("/sentiment/upload-file", formData, advanced ? ADVANCED_UPLOAD_TIMEOUT_MS : undefined);
 }
 
 /** Retrieves a previously classified upload (kept 7 days) without re-uploading. */

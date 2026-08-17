@@ -20,24 +20,37 @@ customer service/packaging, none of which appear in the text (customer
 service scored 98.8% confidence). The prior code queried all 5 fixed aspects
 on every review regardless of content.
 
-Fix: `_aspect_mentioned()` gates each aspect behind a lexical presence check
-(ASPECT_KEYWORDS) before the model is ever called for it. If no keyword for
-an aspect appears in the text, that aspect is reported as "Not mentioned"
-without a model call, instead of a hallucinated Positive/Negative/Neutral.
-This is a heuristic, not a perfect detector -- it can miss aspects discussed
-without any of the listed keywords (a false negative just means that aspect
-is skipped, which is no worse than the un-gated behavior for aspects never
-queried) and can occasionally admit a keyword used in an unrelated sense (a
-false positive just falls back to the original model-scored behavior). It
-directly eliminates the confirmed failure mode above: neither "quality" nor
-"customer service" appears in the delivery-only example, so that call is now
-skipped entirely rather than guessed.
+Fix: `_aspect_mentioned()` gates each aspect behind a presence check before
+the model is ever called for it. If the aspect doesn't appear to be
+discussed, it's reported as "Not mentioned" without a model call, instead of
+a hallucinated Positive/Negative/Neutral.
+
+The presence check itself is `aspect_extraction.aspect_mentioned()` (see
+app/ml/aspect_extraction.py): RAKE extracts the review's own salient phrases
+directly from its text (domain-general, no per-domain configuration needed),
+then those extracted phrases are matched against the aspect category by
+stemmed word overlap. ASPECT_KEYWORDS below is no longer a raw-text substring
+search -- it's an optional, small `extra_seeds` list per category (a
+precision boost for recovering aspects discussed without using the category's
+own name, e.g. "flimsy"/"broke" for "product quality") layered on top of the
+domain-general extraction step, not a requirement for it to work. A brand
+new domain (restaurants, hotels, ...) needs only new category names to get a
+working gate; the seed lists are an optional, much smaller addition on top.
+
+This is still a heuristic, not a perfect detector -- it can miss aspects
+phrased in ways RAKE doesn't surface as salient (a false negative just means
+that aspect is skipped, no worse than the un-gated behavior) and can
+occasionally admit an unrelated phrase that happens to share a stem with the
+category (a false positive falls back to the original model-scored
+behavior). It directly eliminates the confirmed failure mode above: neither
+"quality" nor "customer service" is extracted from the delivery-only
+example, so those calls are skipped entirely rather than guessed.
 """
 from __future__ import annotations
 
-import re
-
 import pandas as pd
+
+from app.ml.aspect_extraction import aspect_mentioned as _extraction_aspect_mentioned
 
 ABSA_MODEL = "yangheng/deberta-v3-base-absa-v1.1"
 ABSA_ASPECTS = ["delivery", "product quality", "price", "customer service", "packaging"]
@@ -45,8 +58,11 @@ DEFAULT_SAMPLE_SIZE = 200
 
 NOT_MENTIONED_LABEL = "Not mentioned"
 
-# Deliberately simple/lexical (not stemmed or fuzzy) so the gate stays fast,
-# dependency-free, and auditable. Word-boundary matched, case-insensitive.
+# Optional seed synonyms per built-in aspect -- layered on top of the
+# domain-general RAKE extraction in aspect_extraction.py, not a substitute
+# for it. A new domain needs none of this to get a working gate (see
+# aspect_extraction.py's module docstring); these exist only to recover
+# e-commerce phrasings that never use the category's own name.
 ASPECT_KEYWORDS: dict[str, list[str]] = {
     "delivery": [
         "deliver", "delivery", "delivered", "delivering", "shipping", "shipped", "ship",
@@ -76,14 +92,11 @@ ASPECT_KEYWORDS: dict[str, list[str]] = {
 
 
 def _aspect_mentioned(text: str, aspect: str) -> bool:
-    """Cheap lexical presence check -- see module docstring for why this
-    gate exists. Falls back to True (query the model) for any aspect without
-    a curated keyword list, preserving prior behavior for custom aspects."""
-    keywords = ASPECT_KEYWORDS.get(aspect)
-    if not keywords:
-        return True
-    lowered = text.lower()
-    return any(re.search(r"\b" + re.escape(kw) + r"\b", lowered) for kw in keywords)
+    """Domain-general presence check -- see module docstring for why this
+    gate exists and how it works. `aspect` needs no pre-registered keyword
+    list to be checked; ASPECT_KEYWORDS only supplies optional extra seeds
+    for the built-in e-commerce categories."""
+    return _extraction_aspect_mentioned(text, aspect, extra_seeds=ASPECT_KEYWORDS.get(aspect))
 
 
 def is_absa_model_available() -> bool:
@@ -124,9 +137,10 @@ def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) ->
         "model": ABSA_MODEL,
         "aspects": records,
         "methodology_note": (
-            "Sentiment-given-aspect over a fixed candidate aspect list, not automatic aspect "
-            "extraction. An aspect is only scored by the model if the review's text contains a "
-            "related keyword; otherwise it's reported as \"Not mentioned\" rather than guessed."
+            "Sentiment-given-aspect over a fixed candidate aspect list. An aspect is only scored "
+            "by the model if RAKE keyphrase extraction finds the review's own text actually "
+            "discussing it (domain-general presence check, not a fixed keyword search); "
+            "otherwise it's reported as \"Not mentioned\" rather than guessed."
         ),
     }
 
@@ -181,8 +195,9 @@ def run_absa(
         "n_predictions": len(results),
         "records": results,
         "methodology_note": (
-            "This is sentiment-given-aspect over a fixed candidate aspect list, "
-            "not automatic aspect extraction. Olist reviews have no manually "
-            "annotated aspect labels."
+            "This is sentiment-given-aspect over a fixed candidate aspect list. Each aspect is "
+            "gated behind RAKE-based keyphrase extraction (domain-general presence check, see "
+            "app/ml/aspect_extraction.py), not a fixed keyword search. Olist reviews have no "
+            "manually annotated aspect labels."
         ),
     }

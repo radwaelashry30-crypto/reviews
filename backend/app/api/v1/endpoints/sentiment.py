@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 
 from app.core.exceptions import InvalidRequestError, ResourceNotFoundError
+from app.core.rate_limit import limiter
 from app.dependencies import get_model_registry
 from app.schemas.common import envelope
 from app.schemas.sentiment import BatchPredictionRequest, ExplainRequest, FullPipelineRequest, ModelName, SentimentPredictionRequest
@@ -11,9 +12,36 @@ from app.services.model_registry import ModelRegistry
 
 router = APIRouter(prefix="/sentiment", tags=["sentiment"])
 
+# Read uploads in bounded chunks rather than a single `await file.read()` --
+# an unbounded read buffers the entire request body in memory before
+# file_batch_service.MAX_FILE_ROWS ever gets a chance to truncate it, which on
+# a 512MB deployment is a real resource-exhaustion vector for a large/malicious
+# upload. 5MB comfortably covers 2,000 rows of review text (the app's own
+# row cap) with headroom.
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+_UPLOAD_CHUNK_SIZE = 1024 * 1024
+
+
+async def _read_upload_bounded(file: UploadFile, max_bytes: int = MAX_UPLOAD_BYTES) -> bytes:
+    """Reads `file` in chunks, aborting before buffering more than `max_bytes`."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise InvalidRequestError(
+                f"Uploaded file exceeds the {max_bytes // (1024 * 1024)}MB limit."
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
 
 @router.post("/predict")
-def predict(payload: SentimentPredictionRequest, registry: ModelRegistry = Depends(get_model_registry)):
+@limiter.limit("30/minute")
+def predict(request: Request, payload: SentimentPredictionRequest, registry: ModelRegistry = Depends(get_model_registry)):
     result = sentiment_service.predict_sentiment(
         registry, payload.text, model_name=payload.model_name,
         source_language=payload.source_language, translate=payload.translate,
@@ -22,14 +50,16 @@ def predict(payload: SentimentPredictionRequest, registry: ModelRegistry = Depen
 
 
 @router.post("/predict-batch")
-def predict_batch(payload: BatchPredictionRequest, registry: ModelRegistry = Depends(get_model_registry)):
+@limiter.limit("15/minute")
+def predict_batch(request: Request, payload: BatchPredictionRequest, registry: ModelRegistry = Depends(get_model_registry)):
     items = [{"id": item.id, "text": item.text} for item in payload.items]
     results = sentiment_service.predict_sentiment_batch(registry, items, model_name=payload.model_name)
     return envelope({"results": results, "n_items": len(results)}, model_version=payload.model_name)
 
 
 @router.post("/pipeline")
-def full_pipeline(payload: FullPipelineRequest, registry: ModelRegistry = Depends(get_model_registry)):
+@limiter.limit("20/minute")
+def full_pipeline(request: Request, payload: FullPipelineRequest, registry: ModelRegistry = Depends(get_model_registry)):
     """Task 1 (sentiment) -> Task 2 (fake-vs-real, only if Negative) -> Task 3 (aspects, always).
 
     Task 2/3 depend on large external models (256MB / 706MB) not loaded at
@@ -46,7 +76,8 @@ def full_pipeline(payload: FullPipelineRequest, registry: ModelRegistry = Depend
 
 
 @router.post("/explain")
-def explain(payload: ExplainRequest, registry: ModelRegistry = Depends(get_model_registry)):
+@limiter.limit("10/minute")
+def explain(request: Request, payload: ExplainRequest, registry: ModelRegistry = Depends(get_model_registry)):
     """SHAP token-level explanation for the fine-tuned BERT model (BERT only --
     CNN2D's embeddings aren't set up for SHAP's text masker). Explains the
     exact text the caller submits; not restricted to the stored test split
@@ -66,7 +97,9 @@ def explain(payload: ExplainRequest, registry: ModelRegistry = Depends(get_model
 
 
 @router.post("/upload-file")
+@limiter.limit("10/minute")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     model_name: ModelName = Form("bert"),
     advanced: bool = Form(False),
@@ -84,7 +117,7 @@ async def upload_file(
     if not file.filename or not file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
         raise InvalidRequestError("Upload a .csv or .xlsx file.")
 
-    content = await file.read()
+    content = await _read_upload_bounded(file)
     if not content:
         raise InvalidRequestError("The uploaded file is empty.")
 

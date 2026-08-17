@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     APP_NAME: str = "Baseera"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
     API_V1_PREFIX: str = "/api/v1"
 
     BACKEND_HOST: str = "0.0.0.0"

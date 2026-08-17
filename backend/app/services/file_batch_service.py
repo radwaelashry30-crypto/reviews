@@ -201,7 +201,14 @@ def _build_fake_review_summary(pipeline_results: list[dict]) -> dict:
 
 def _build_aspect_summary(pipeline_results: list[dict], sample_size: int) -> dict:
     """Aggregates per-row ABSA results (sentiment-given-aspect over a fixed
-    aspect list) into per-aspect Positive/Neutral/Negative rates."""
+    aspect list) into per-aspect Positive/Neutral/Negative rates.
+
+    Percentages are computed only among rows where the aspect was actually
+    mentioned (see app/ml/absa.py's keyword-presence gate) -- folding
+    "Not mentioned" rows into the same denominator would silently deflate
+    every percentage without explanation whenever an aspect is rarely
+    discussed. `n_mentioned` / `mentioned_pct` report that coverage explicitly
+    instead."""
     aspect_rows = [r["aspects"] for r in pipeline_results if r.get("aspects") is not None]
     if not aspect_rows:
         return {"available": False, "reason": "no rows analyzed"}
@@ -217,13 +224,17 @@ def _build_aspect_summary(pipeline_results: list[dict], sample_size: int) -> dic
 
     summary = []
     for aspect, counts in per_aspect_counts.items():
-        n = sum(counts.values())
+        n_total = sum(counts.values())
+        n_not_mentioned = counts.get("Not mentioned", 0)
+        n_mentioned = n_total - n_not_mentioned
         summary.append({
             "aspect": aspect,
-            "n": n,
-            "positive_pct": round(counts.get("Positive", 0) / n * 100, 2) if n else 0.0,
-            "neutral_pct": round(counts.get("Neutral", 0) / n * 100, 2) if n else 0.0,
-            "negative_pct": round(counts.get("Negative", 0) / n * 100, 2) if n else 0.0,
+            "n": n_total,
+            "n_mentioned": n_mentioned,
+            "mentioned_pct": round(n_mentioned / n_total * 100, 2) if n_total else 0.0,
+            "positive_pct": round(counts.get("Positive", 0) / n_mentioned * 100, 2) if n_mentioned else 0.0,
+            "neutral_pct": round(counts.get("Neutral", 0) / n_mentioned * 100, 2) if n_mentioned else 0.0,
+            "negative_pct": round(counts.get("Negative", 0) / n_mentioned * 100, 2) if n_mentioned else 0.0,
         })
 
     return {

@@ -142,9 +142,10 @@ function buildAdvancedSummaryHtml(result: FileUploadResponse): string {
         <h3>Aspect Breakdown</h3>
         ${
           aspects.available
-            ? `<table><thead><tr><th>Aspect</th><th>Positive</th><th>Neutral</th><th>Negative</th></tr></thead><tbody>${aspects.per_aspect
-                .map((a) => `<tr><td>${escapeHtml(a.aspect)}</td><td>${a.positive_pct.toFixed(0)}%</td><td>${a.neutral_pct.toFixed(0)}%</td><td>${a.negative_pct.toFixed(0)}%</td></tr>`)
-                .join("")}</tbody></table>`
+            ? `<table><thead><tr><th>Aspect</th><th>Mentioned</th><th>Positive</th><th>Neutral</th><th>Negative</th></tr></thead><tbody>${aspects.per_aspect
+                .map((a) => `<tr><td>${escapeHtml(a.aspect)}</td><td>${a.mentioned_pct.toFixed(0)}%</td><td>${a.positive_pct.toFixed(0)}%</td><td>${a.neutral_pct.toFixed(0)}%</td><td>${a.negative_pct.toFixed(0)}%</td></tr>`)
+                .join("")}</tbody></table>
+              <p class="note">Positive/Neutral/Negative are computed among reviews that mentioned that aspect only (see the Mentioned column).</p>`
             : `<p class="note">Not available (${escapeHtml(aspects.reason)}).</p>`
         }
       </div>`

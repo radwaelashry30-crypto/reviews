@@ -65,7 +65,7 @@ export interface FakeCheckResult {
 
 export interface AspectResult {
   aspect: string;
-  sentiment: "Positive" | "Negative" | "Neutral" | "UNKNOWN";
+  sentiment: "Positive" | "Negative" | "Neutral" | "Not mentioned" | "UNKNOWN";
   confidence: number;
 }
 
@@ -136,6 +136,9 @@ export type FakeReviewSummary =
 export interface AspectSummaryRow {
   aspect: string;
   n: number;
+  n_mentioned: number;
+  mentioned_pct: number;
+  /** Positive/neutral/negative % are computed among n_mentioned rows only (see mentioned_pct for coverage). */
   positive_pct: number;
   neutral_pct: number;
   negative_pct: number;

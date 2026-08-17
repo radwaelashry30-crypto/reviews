@@ -4,6 +4,7 @@ const SENTIMENT_COLOR: Record<string, string> = {
   Positive: "var(--positive)",
   Negative: "var(--negative)",
   Neutral: "var(--text-faint)",
+  "Not mentioned": "var(--text-faint)",
   UNKNOWN: "var(--text-faint)",
 };
 
@@ -33,7 +34,12 @@ export function AspectsBreakdown({ result }: { result: AspectsResult }) {
                 style={{ width: `${a.confidence * 100}%`, background: SENTIMENT_COLOR[a.sentiment] ?? "var(--text-faint)" }}
               />
             </div>
-            <span className="aspect-sentiment" style={{ color: SENTIMENT_COLOR[a.sentiment] }}>{a.sentiment}</span>
+            <span
+              className="aspect-sentiment"
+              style={{ color: SENTIMENT_COLOR[a.sentiment], fontStyle: a.sentiment === "Not mentioned" ? "italic" : "normal", opacity: a.sentiment === "Not mentioned" ? 0.7 : 1 }}
+            >
+              {a.sentiment}
+            </span>
           </div>
         ))}
       </div>

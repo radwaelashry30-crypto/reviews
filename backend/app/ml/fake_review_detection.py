@@ -23,6 +23,20 @@ empirical spot-check above. This assumption is NOT verified against the
 model's own config and is surfaced explicitly in every response via
 `label_semantics_verified: false`.
 
+**Second, more severe confirmed issue: predictions are not stable under
+meaning-preserving paraphrasing.** Tested directly against the live model:
+"The material feels flimsy and the color is different from the photos." ->
+LABEL_1 at 99.9% confidence, but the same sentence reworded with synonyms
+only -- "The fabric feels cheap and the color doesn't match the pictures."
+-- flips to LABEL_1 at 0.1% confidence. Text length alone was also tested and
+ruled out as the driver (a fixed sentence scored progressively closer to 0%
+as filler clauses were appended, with no change in meaning). No content-level
+pattern (genericness, topic, sentiment polarity, length) reproduced across
+repeated tests, meaning the model is not keying on anything a human would
+recognize as evidence of authenticity -- it is reacting to incidental lexical
+choices from its own training corpus. Full investigation and evidence:
+MODEL_COMPARISON_AUDIT.md.
+
 This module is kept separate from sentiment classification, never downloads
 the model at import time, and never presents its output as a validated
 fraud signal.
@@ -36,7 +50,11 @@ DEFAULT_BATCH_SIZE = 32
 ASSUMED_FAKE_LABEL = "LABEL_1"
 
 DISCLAIMER = (
-    "Exploratory only. This checkpoint's config.json does not define what its "
+    "Exploratory only -- not a reliable signal. Rewording a review with pure "
+    "synonyms (identical meaning) has been observed to flip this verdict "
+    "entirely (99.9% -> 0.1% confidence in direct testing), so a different "
+    "phrasing of the exact same review can produce the opposite verdict. "
+    "This checkpoint's config.json also does not define what its "
     "output labels ('LABEL_0'/'LABEL_1') mean -- the model card's documented "
     "'FAKE'/'REAL' names were never wired into the published config. This "
     "module ASSUMES LABEL_1 = fake (common convention + empirically the "

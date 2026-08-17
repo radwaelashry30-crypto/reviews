@@ -15,6 +15,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
+from app.core.rate_limit import register_rate_limiter
 from app.repositories.analytics_repository import AnalyticsRepository
 from app.services.model_registry import ModelRegistry
 
@@ -59,6 +60,7 @@ app.add_middleware(
 )
 
 register_exception_handlers(app)
+register_rate_limiter(app)
 
 
 @app.middleware("http")

@@ -111,3 +111,27 @@ Scoped against real data: of the 599 Olist reviews (3-star excluded) mentioning 
 | Hand-crafted eval (10 cases incl. "the shipment coming late", held out from training) | not applicable (bug not yet fixed) | **10/10**, including nuance cases like "a bit late but worth the wait" staying correctly Positive (93.8%) |
 
 "the shipment coming late" now classifies Negative at 97.2% confidence. Applied to the shipped `models/bert_review_sentiment/` since it is a strict, measured improvement (better accuracy, better F1, dramatically lower false-positive rate on the target failure mode, no case that got worse) with no regression on the untouched Olist test set. Full before/after data: `results/bert_late_delivery_augmentation_report.json`. Reproduce with `python backend/scripts/retrain_bert_late_delivery_augmented.py --apply`.
+
+## 8. Threshold and calibration analysis (2026-08-16)
+
+**Motivation**: the deployed decision threshold (0.5) had never been empirically validated for either model, and neither model's predicted probabilities had ever been checked for calibration (does "90% confident" actually mean right ~90% of the time?). Run via `backend/scripts/calibration_analysis.py` on the **validation split only** (n=3,149; never the test split used for headline metrics, never used for training or early stopping).
+
+**Threshold sweep (0.30-0.70, step 0.05)**:
+
+| | BERT | CNN2D |
+|---|---|---|
+| Accuracy at t=0.5 (current default) | 0.9390 | 0.9190 |
+| Best accuracy in sweep | **0.9390 at t=0.50** (already optimal) | 0.9200 at t=0.45 |
+| F1 at t=0.5 | 0.9536 | 0.9373 |
+| Best F1 in sweep | **0.9536 at t=0.50** (already optimal) | 0.9386 at t=0.45 |
+
+**Finding**: for BERT, 0.5 is already the accuracy- and F1-optimal threshold across the entire sweep — no change justified. For CNN2D, t=0.45 edges out t=0.50 by +0.10pp accuracy / +0.13pp F1, which is within normal validation-fold noise for ~3,100 examples, not a meaningful miscalibration of the threshold. **Conclusion: 0.5 is kept for both models** — this is a case where the audit's answer is "checked, no defect found," not a manufactured fix.
+
+**Calibration (Brier score, Expected Calibration Error, 10 bins)**:
+
+| | BERT | CNN2D |
+|---|---|---|
+| Brier score (0=perfect, 0.25=coin-flip) | **0.0502** | 0.0673 |
+| ECE (0=perfectly calibrated) | **0.0309** | 0.0597 |
+
+Both models are reasonably well-calibrated (an average gap of ~3% for BERT and ~6% for CNN2D between stated confidence and actual accuracy across confidence bins) — well short of "confidently wrong," though BERT is the better-calibrated of the two, consistent with it being the larger, better-performing model. Full per-bin breakdown and the complete threshold sweep: `results/calibration_analysis.json`. Reproduce with `python backend/scripts/calibration_analysis.py --model both`.

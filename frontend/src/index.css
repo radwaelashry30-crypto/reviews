@@ -246,11 +246,12 @@ body {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
   padding: 1.35rem; box-shadow: var(--shadow-card);
 }
-.fake-check-card.clear { border-color: var(--positive-border); }
-.fake-check-card.flagged { border-color: var(--negative-border); }
 .fake-check-verdict { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0.5rem 0 0.35rem; }
-.fake-check-card.clear .fake-check-verdict { color: var(--positive); }
-.fake-check-card.flagged .fake-check-verdict { color: var(--negative); }
+/* Deliberately NOT colored red/green like a real verdict -- this signal was
+   confirmed to flip under pure synonym substitution (see fake_review_detection.py
+   module docstring), so a confident-looking color would misstate its reliability. */
+.fake-check-card.fake-check-exploratory { border-color: var(--border); }
+.fake-check-card.fake-check-exploratory .fake-check-verdict { color: var(--text-muted); font-size: 1rem; }
 
 .aspects-list { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
 .aspect-row { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 0.6rem; font-size: 0.85rem; }

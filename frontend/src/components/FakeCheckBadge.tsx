@@ -16,10 +16,10 @@ export function FakeCheckBadge({ result }: { result: FakeCheckResult | null }) {
   }
 
   return (
-    <div className={`fake-check-card ${result.is_fake ? "flagged" : "clear"}`}>
-      <span className="eyebrow">Task 2 · Authenticity check</span>
+    <div className="fake-check-card fake-check-exploratory">
+      <span className="eyebrow">Task 2 · Authenticity check (exploratory, unreliable)</span>
       <div className="fake-check-verdict">
-        {result.is_fake ? "⚠ Flagged as possibly fake" : "✓ No fake-review signal detected"}
+        {result.is_fake ? "Model output: LABEL_1 (assumed “fake”)" : "Model output: LABEL_0 (assumed “real”)"}
       </div>
       <p className="limitations-note">{result.disclaimer}</p>
     </div>

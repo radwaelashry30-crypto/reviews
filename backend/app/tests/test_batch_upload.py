@@ -28,6 +28,21 @@ def _csv_without_dates() -> bytes:
     return ("\n".join(rows)).encode("utf-8")
 
 
+def test_upload_file_rejects_oversized_file(client):
+    """Regression test for the unbounded-read DoS vector: a file over the 5MB
+    cap must be rejected with 400 before it's ever handed to pandas, not
+    silently buffered into memory in full."""
+    oversized = b"review_comment_message_en\n" + (b'"padding padding padding",\n' * 250_000)
+    assert len(oversized) > 5 * 1024 * 1024
+    resp = client.post(
+        "/api/v1/sentiment/upload-file",
+        files={"file": ("reviews.csv", oversized, "text/csv")},
+        data={"model_name": "cnn2d"},
+    )
+    assert resp.status_code == 400
+    assert "5MB" in resp.json()["error"]["message"] or "limit" in resp.json()["error"]["message"].lower()
+
+
 def test_upload_file_basic_includes_top_words_and_time_trend(client):
     if not _bert_available(client):
         pytest.skip("Fine-tuned BERT artifact not available in this environment.")
@@ -82,4 +97,4 @@ def test_upload_file_advanced_includes_fake_and_aspect_summaries(client):
     if data["aspect_summary"]["available"]:
         assert data["aspect_summary"]["per_aspect"]
         for row in data["aspect_summary"]["per_aspect"]:
-            assert set(row) >= {"aspect", "n", "positive_pct", "neutral_pct", "negative_pct"}
+            assert set(row) >= {"aspect", "n", "n_mentioned", "mentioned_pct", "positive_pct", "neutral_pct", "negative_pct"}

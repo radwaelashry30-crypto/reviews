@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 
 from app.core.exceptions import InvalidRequestError, ResourceNotFoundError
 from app.core.rate_limit import limiter
+from app.db.base import db_configured
 from app.dependencies import get_model_registry
 from app.schemas.common import envelope
-from app.schemas.sentiment import BatchPredictionRequest, ExplainRequest, FullPipelineRequest, ModelName, SentimentPredictionRequest
-from app.services import advanced_sentiment_service, file_batch_service, sentiment_service, upload_store
+from app.schemas.sentiment import (
+    BatchPredictionRequest, ExplainRequest, FeedbackRequest, FullPipelineRequest, ModelName, SentimentPredictionRequest,
+)
+from app.services import advanced_sentiment_service, file_batch_service, persistence_service, sentiment_service, upload_store
 from app.services.model_registry import ModelRegistry
 
 router = APIRouter(prefix="/sentiment", tags=["sentiment"])
@@ -46,7 +49,8 @@ def predict(request: Request, payload: SentimentPredictionRequest, registry: Mod
         registry, payload.text, model_name=payload.model_name,
         source_language=payload.source_language, translate=payload.translate,
     )
-    return envelope(result, model_version=payload.model_name)
+    analysis_id = persistence_service.try_save_analysis(payload.text, result)
+    return envelope({**result, "analysis_id": analysis_id}, model_version=payload.model_name)
 
 
 @router.post("/predict-batch")
@@ -72,7 +76,9 @@ def full_pipeline(request: Request, payload: FullPipelineRequest, registry: Mode
         source_language=payload.source_language, translate=payload.translate,
         aspects=payload.aspects,
     )
-    return envelope(result, model_version=payload.model_name)
+    aspects_for_db = result["aspects"]["aspects"] if result["aspects"].get("available") else None
+    analysis_id = persistence_service.try_save_analysis(payload.text, result["sentiment"], aspects_for_db)
+    return envelope({**result, "analysis_id": analysis_id}, model_version=payload.model_name)
 
 
 @router.post("/explain")
@@ -134,3 +140,88 @@ def get_uploaded_result(upload_id: str):
     if saved is None:
         raise ResourceNotFoundError(f"No saved upload found for id '{upload_id}' (not found, or its 7-day retention expired).")
     return envelope({**saved["result"], "upload_id": saved["upload_id"], "created_at": saved["created_at"], "expires_at": saved["expires_at"]})
+
+
+def _require_db():
+    """Endpoints that are explicitly about DB-backed history should fail
+    clearly (503) rather than silently return empty results when no
+    database is configured -- unlike /predict and /pipeline, which persist
+    best-effort and always return a prediction regardless."""
+    if not db_configured():
+        from app.core.exceptions import ModelUnavailableError
+
+        raise ModelUnavailableError("Analysis history is not available: no database is configured on this deployment.")
+
+
+def _analysis_to_dict(row) -> dict:
+    return {
+        "analysis_id": row.id,
+        "text": row.text,
+        "cleaned_text": row.cleaned_text,
+        "label": row.label,
+        "class_id": row.class_id,
+        "probability_positive": row.probability_positive,
+        "probability_negative": row.probability_negative,
+        "confidence": row.confidence,
+        "model_name": row.model_name,
+        "source_language": row.source_language,
+        "translated": row.translated,
+        "created_at": row.created_at.isoformat(),
+        "aspects": [{"aspect": a.aspect, "sentiment": a.sentiment, "confidence": a.confidence} for a in row.aspects],
+    }
+
+
+@router.get("/analyses")
+def list_analyses(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    label: str | None = Query(None, pattern="^(Positive|Negative)$"),
+    model_name: ModelName | None = None,
+):
+    """Paginated history of persisted /predict and /pipeline analyses. 503 if
+    no database is configured on this deployment (see DATABASE_SETUP.md)."""
+    _require_db()
+    from app.db.base import get_session_factory
+    from app.repositories import sentiment_repository
+
+    session = get_session_factory()()
+    try:
+        rows, total = sentiment_repository.list_analyses(session, limit=limit, offset=offset, label=label, model_name=model_name)
+        return envelope({"items": [_analysis_to_dict(r) for r in rows], "total": total, "limit": limit, "offset": offset})
+    finally:
+        session.close()
+
+
+@router.get("/analyses/{analysis_id}")
+def get_analysis(analysis_id: str):
+    _require_db()
+    from app.db.base import get_session_factory
+    from app.repositories import sentiment_repository
+
+    session = get_session_factory()()
+    try:
+        row = sentiment_repository.get_analysis(session, analysis_id)
+        if row is None:
+            raise ResourceNotFoundError(f"No saved analysis found for id '{analysis_id}'.")
+        return envelope(_analysis_to_dict(row))
+    finally:
+        session.close()
+
+
+@router.post("/analyses/{analysis_id}/feedback")
+@limiter.limit("30/minute")
+def submit_feedback(request: Request, analysis_id: str, payload: FeedbackRequest):
+    """Thumbs-up/down on a saved prediction. Anonymous -- this project has no
+    user accounts."""
+    _require_db()
+    from app.db.base import get_session_factory
+    from app.repositories import sentiment_repository
+
+    session = get_session_factory()()
+    try:
+        row = sentiment_repository.save_feedback(session, analysis_id=analysis_id, is_correct=payload.is_correct, comment=payload.comment)
+        if row is None:
+            raise ResourceNotFoundError(f"No saved analysis found for id '{analysis_id}'.")
+        return envelope({"feedback_id": row.id, "analysis_id": row.analysis_id, "is_correct": row.is_correct})
+    finally:
+        session.close()

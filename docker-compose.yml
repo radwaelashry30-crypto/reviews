@@ -8,8 +8,13 @@ services:
     environment:
       - ENVIRONMENT=production
       - FRONTEND_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+      # Optional -- comment out (or leave db unstarted) to run without a
+      # database, same as any other deployment. See DATABASE_SETUP.md.
+      - DATABASE_URL=postgresql://baseera:baseera@db:5432/baseera
     env_file:
       - .env
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -21,3 +26,20 @@ services:
       - "5173:80"
     depends_on:
       - backend
+
+  # Optional, local-dev only. Not required to run the app -- see the
+  # DATABASE_URL comment above. Comment this whole service out (and the
+  # backend's `depends_on: db`) if you don't want a database at all.
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=baseera
+      - POSTGRES_PASSWORD=baseera
+      - POSTGRES_DB=baseera
+    ports:
+      - "5432:5432"
+    volumes:
+      - baseera_pgdata:/var/lib/postgresql/data
+
+volumes:
+  baseera_pgdata:

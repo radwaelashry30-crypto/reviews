@@ -37,7 +37,7 @@ export function SentimentPage() {
           <ErrorState error={error} />
           {result ? (
             <>
-              <SentimentResult result={result.sentiment} />
+              <SentimentResult result={result.sentiment} analysisId={result.analysis_id} />
               {result.sentiment.model_name === "bert" && (
                 <button
                   type="button"

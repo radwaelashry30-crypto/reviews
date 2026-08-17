@@ -39,6 +39,13 @@ async def lifespan(app: FastAPI):
     logger.info("Loaded analytics datasets: %s", repo.available_datasets())
     logger.info("Loaded analytics results: %s", repo.available_results())
 
+    from app.db.base import db_configured
+
+    # Deliberately does NOT connect here -- the engine is created lazily on
+    # first query (see app/db/base.py) so an unreachable database never
+    # blocks or crashes app startup. This just logs the configured intent.
+    logger.info("Database: %s", "configured (DATABASE_URL set)" if db_configured() else "not configured (predictions/uploads persist locally only)")
+
     yield
 
     logger.info("Shutting down %s", settings.APP_NAME)

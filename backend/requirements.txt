@@ -24,3 +24,13 @@ httpx>=0.27
 python-multipart>=0.0.9
 openpyxl>=3.1
 slowapi>=0.1.9
+
+# Optional database persistence layer (see DATABASE_SETUP.md). The app runs
+# fine with DATABASE_URL unset -- these are only exercised when it's set.
+sqlalchemy>=2.0
+alembic>=1.13
+psycopg[binary]>=3.1
+
+# Training-only, not needed to serve the app -- pulls theArijitDas/Fake-Reviews-Dataset
+# for scripts/train_fake_review_detector.py.
+datasets>=2.19

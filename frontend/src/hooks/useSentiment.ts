@@ -6,6 +6,35 @@ import type {
   SentimentPrediction, SentimentPredictionRequest,
 } from "../types/sentiment";
 
+/** Thumbs-up/down on a saved analysis. Only usable when the prediction
+ * carried a non-null analysis_id (i.e. the backend has a database
+ * configured -- see DATABASE_SETUP.md). */
+export function useFeedback() {
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<ApiClientError | null>(null);
+
+  async function submit(analysisId: string, isCorrect: boolean, comment?: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      await sentimentApi.submitFeedback(analysisId, { is_correct: isCorrect, comment });
+      setSubmitted(true);
+    } catch (e) {
+      setError(e as ApiClientError);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function reset() {
+    setSubmitted(false);
+    setError(null);
+  }
+
+  return { submitted, loading, error, submit, reset };
+}
+
 export function useSentimentPrediction() {
   const [result, setResult] = useState<SentimentPrediction | null>(null);
   const [loading, setLoading] = useState(false);

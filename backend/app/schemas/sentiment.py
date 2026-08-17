@@ -90,3 +90,11 @@ class ExplainResponse(BaseModel):
     available: bool
     reason: str | None = None
     top_tokens_toward_positive: list[dict] | None = None
+
+
+class FeedbackRequest(BaseModel):
+    """Thumbs-up/down on a saved prediction. This project has no user
+    accounts, so feedback is anonymous -- a directional signal, not an
+    audited per-user record."""
+    is_correct: bool
+    comment: str | None = Field(default=None, max_length=1000)

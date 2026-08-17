@@ -81,6 +81,13 @@ export interface FullPipelineResponse {
   sentiment: SentimentPrediction;
   fake_check: FakeCheckResult | null;
   aspects: AspectsResult;
+  /** Present when the backend has a database configured (see DATABASE_SETUP.md); null otherwise. */
+  analysis_id: string | null;
+}
+
+export interface FeedbackRequest {
+  is_correct: boolean;
+  comment?: string;
 }
 
 // -- SHAP explanation (BERT only) --

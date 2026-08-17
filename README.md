@@ -105,7 +105,9 @@ SHAP `PartitionExplainer` over the fine-tuned BERT pipeline, sample size 8 (conf
 
 ## 20. Backend architecture
 
-FastAPI, layered: `api/v1/endpoints` (HTTP) → `services` (business logic, no FastAPI imports) → `ml` (pure ML/data code) + `repositories` (cached data access). `ModelRegistry` loads every optional artifact once at startup (`app/main.py` lifespan) and never reloads per request. See `API_DOCUMENTATION.md`.
+FastAPI, layered: `api/v1/endpoints` (HTTP) → `services` (business logic, no FastAPI imports) → `ml` (pure ML/data code) + `repositories` (cached data access, plus the optional DB-backed `sentiment_repository.py`/`batch_repository.py`). `ModelRegistry` loads every optional artifact once at startup (`app/main.py` lifespan) and never reloads per request. See `API_DOCUMENTATION.md`.
+
+Optional relational persistence (sentiment-analysis history, feedback, durable batch-upload records) via SQLAlchemy + Alembic — entirely opt-in, set `DATABASE_URL` to enable it. See `DATABASE_SETUP.md`.
 
 ## 21. Frontend architecture
 

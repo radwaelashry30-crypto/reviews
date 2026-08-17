@@ -1,7 +1,7 @@
 import { apiGet, apiPost, apiPostFile } from "./client";
 import type {
-  BatchPredictionRequest, BatchPredictionResponse, ExplainResponse, FileUploadResponse, FullPipelineRequest,
-  FullPipelineResponse, ModelName, SentimentPrediction, SentimentPredictionRequest,
+  BatchPredictionRequest, BatchPredictionResponse, ExplainResponse, FeedbackRequest, FileUploadResponse,
+  FullPipelineRequest, FullPipelineResponse, ModelName, SentimentPrediction, SentimentPredictionRequest,
 } from "../types/sentiment";
 
 export function predictSentiment(request: SentimentPredictionRequest): Promise<SentimentPrediction> {
@@ -36,4 +36,11 @@ export function uploadReviewFile(file: File, modelName: ModelName, advanced = fa
 /** Retrieves a previously classified upload (kept 7 days) without re-uploading. */
 export function getUploadedResult(uploadId: string): Promise<FileUploadResponse> {
   return apiGet<FileUploadResponse>(`/sentiment/upload-file/${uploadId}`);
+}
+
+/** Thumbs-up/down on a saved analysis. Only works when the backend has a
+ * database configured (see DATABASE_SETUP.md) -- callers should only offer
+ * this when `analysis_id` is non-null on the original prediction. */
+export function submitFeedback(analysisId: string, feedback: FeedbackRequest): Promise<{ feedback_id: string; analysis_id: string; is_correct: boolean }> {
+  return apiPost(`/sentiment/analyses/${analysisId}/feedback`, feedback);
 }

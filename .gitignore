@@ -53,3 +53,8 @@ original_project_backup/
 /../*.zip
 Olist_Marketplace_Platform.zip
 frontend/*.tsbuildinfo
+
+# Local SQLite dev/test database (used only when DATABASE_URL is unset --
+# see DATABASE_SETUP.md). Never a real deployment target.
+backend/dev.db
+backend/*.db

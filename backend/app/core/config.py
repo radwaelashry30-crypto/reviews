@@ -56,5 +56,11 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    # Optional relational persistence (sentiment-analysis history, feedback,
+    # durable batch-upload records). Entirely optional -- the app runs fine
+    # with this unset, same philosophy as ENABLE_BERT/ALLOW_EXTERNAL_MODEL_DOWNLOADS.
+    # When unset, upload_store.py falls back to its original local-JSON store.
+    DATABASE_URL: str | None = None
+
 
 settings = Settings()

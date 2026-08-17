@@ -1,0 +1,42 @@
+# Model Card — Baseera
+
+## Overview
+
+Baseera runs two independently trained binary sentiment classifiers over Olist marketplace reviews (translated Portuguese → English), plus two optional, explicitly experimental modules layered on top for negative reviews: aspect-based sentiment (ABSA) and fake-review screening.
+
+| Model | Role | Params | Test accuracy | Deployed where |
+|---|---|---:|---:|---|
+| Fine-tuned BERT (`LiYuan/amazon-review-sentiment-analysis` base) | Primary sentiment classifier | ~178M | 93.70% | Locally / hosts with ≥1GB RAM |
+| CNN2D (from-scratch, bag-of-n-grams) | Fallback sentiment classifier | ~3.0M | 92.01% | Live production (Render, 512MB RAM) |
+| `yangheng/deberta-v3-base-absa-v1.1` | Aspect-based sentiment (Task 3) | — | not independently benchmarked | Locally only |
+| `jb10231/fake-review-detector` | Fake-review screening (Task 2) | — | not independently benchmarked | Locally only |
+
+## Task and label mapping
+
+Binary sentiment: **1–2 stars → Negative (0), 4–5 stars → Positive (1)**. 3-star and textless reviews are excluded from training/evaluation. Predictions are probabilistic estimates over this specific dataset, not objective ground truth about a customer's actual experience.
+
+## Training data
+
+Olist Brazilian e-commerce reviews (Jan 2017–Aug 2018), machine-translated to English (MarianMT). 22,038 train / 3,149 val / 6,297 test after deduplication and leakage-safe splitting — see `DATA_LEAKAGE_AUDIT.md` and `DATA_QUALITY_AUDIT.md` for the full data pipeline audit.
+
+## Evaluation
+
+Full metrics: `MODEL_COMPARISON_AUDIT.md`. Headline numbers are computed on the untouched test split, never used for training, tuning, or threshold selection. Threshold (0.5) and calibration were independently checked on the validation split (`MODEL_COMPARISON_AUDIT.md` §8, `results/calibration_analysis.json`):
+
+- **BERT**: 0.5 is the accuracy/F1-optimal threshold across a 0.30–0.70 sweep. Brier score 0.0502, ECE 0.0309 (well-calibrated).
+- **CNN2D**: 0.5 is within 0.15 percentage points of the sweep optimum (t=0.45) — not a meaningful miscalibration. Brier score 0.0673, ECE 0.0597 (reasonably calibrated, worse than BERT).
+
+## Known, confirmed limitations
+
+- **CNN2D cannot reliably handle negation** ("the product is not bad" → misclassified Negative). Architectural ceiling for a small bag-of-n-grams model — two augmented-retraining attempts at increasing data scale did not close the gap (`MODEL_COMPARISON_AUDIT.md` §5–6). BERT handles this correctly; CNN2D is what the public deployment currently serves due to RAM constraints.
+- **BERT had a blind spot on blunt delivery-lateness complaints** ("the shipment coming late" → 99.5% Positive). Fixed via targeted continued fine-tuning (§7); false-positive rate on real delay complaints dropped from 11.1% to 1.0% with no regression on the general test set. This fix lives in the checkpoint used locally; the public deployment serves CNN2D only, which did not have this specific bug.
+- **ABSA (Task 3) previously hallucinated aspects never mentioned in the text** — fixed via a keyword-presence gate; unmentioned aspects now report "Not mentioned" instead of a guessed sentiment. See module docstring in `backend/app/ml/absa.py`.
+- **Fake-review detection (Task 2) is confirmed unreliable, not just unverified.** Beyond the label-semantics ambiguity (the model's `LABEL_0`/`LABEL_1` mapping to fake/real is assumed, not verified against its config), predictions were shown to flip from 99.9% to 0.1% confidence under a pure synonym substitution with identical meaning. This module should not be treated as evidence of anything; it is disclosed as exploratory-only in every API response and de-emphasized in the UI (no red/green "verdict" styling).
+
+## Intended use / responsible-use statement
+
+Do not use sentiment predictions to make consequential decisions about individual customers or sellers without human review. Do not present the ABSA or fake-review modules' output as validated ground truth — both carry explicit reliability caveats in their API responses.
+
+## Reproducibility
+
+Seed 42 throughout (dataset split, class weights, PyTorch/NumPy/Python RNG). Tokenizers fit on the training split only. Full training/evaluation commands: `README.md` §31–32. Retraining scripts for the confirmed fixes above: `backend/scripts/retrain_cnn2d_negation_augmented.py`, `backend/scripts/retrain_bert_late_delivery_augmented.py`.

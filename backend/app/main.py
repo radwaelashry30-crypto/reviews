@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,31 @@ from app.services.model_registry import ModelRegistry
 
 configure_logging()
 logger = get_logger(__name__)
+
+
+def _run_pending_migrations() -> None:
+    """Applies Alembic migrations against DATABASE_URL on startup.
+
+    Render (and most simple deploy targets here) have no separate release/
+    migration step -- the only process that ever gets network access to the
+    real database is this app itself. Without this, a fresh database has
+    DATABASE_URL configured and connects fine (so /health looks healthy) but
+    has no tables, so every write silently fails inside the best-effort
+    persistence layer (see app/services/persistence_service.py). Wrapped in
+    try/except so a migration problem degrades to "no persistence", same as
+    an unreachable database, rather than crashing the whole app.
+    """
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        backend_dir = Path(__file__).resolve().parents[1]
+        cfg = Config(str(backend_dir / "alembic.ini"))
+        cfg.set_main_option("script_location", str(backend_dir / "migrations"))
+        command.upgrade(cfg, "head")
+        logger.info("Database: configured, migrations applied (up to date)")
+    except Exception as e:
+        logger.warning("Database: configured, but migration step failed (persistence may not work): %s", e)
 
 
 @asynccontextmanager
@@ -41,10 +67,10 @@ async def lifespan(app: FastAPI):
 
     from app.db.base import db_configured
 
-    # Deliberately does NOT connect here -- the engine is created lazily on
-    # first query (see app/db/base.py) so an unreachable database never
-    # blocks or crashes app startup. This just logs the configured intent.
-    logger.info("Database: %s", "configured (DATABASE_URL set)" if db_configured() else "not configured (predictions/uploads persist locally only)")
+    if db_configured():
+        _run_pending_migrations()
+    else:
+        logger.info("Database: not configured (predictions/uploads persist locally only)")
 
     yield
 

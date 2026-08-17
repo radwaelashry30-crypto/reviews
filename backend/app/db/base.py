@@ -29,6 +29,21 @@ def db_configured() -> bool:
     return bool(settings.DATABASE_URL)
 
 
+def _normalize_db_url(url: str) -> str:
+    """Render (and Heroku-style hosts) hand out plain `postgresql://` /
+    `postgres://` URLs, which SQLAlchemy defaults to the psycopg2 dialect for
+    -- but this project installs psycopg (v3), not psycopg2 (see
+    requirements.txt). Rewriting the scheme to `postgresql+psycopg://`
+    explicitly selects the driver that's actually installed, rather than
+    requiring every DATABASE_URL value to be hand-edited with the right
+    suffix. SQLite URLs (used for local dev/tests) pass through unchanged."""
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    return url
+
+
 def get_engine():
     """Lazily creates the engine on first use, not at import time (so a
     missing/unreachable DB never breaks app startup)."""
@@ -40,7 +55,7 @@ def get_engine():
         # server already dropped (common on free-tier hosts that idle-close
         # connections) -- fails fast with a clean reconnect instead of a
         # confusing mid-query error.
-        _engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=5)
+        _engine = create_engine(_normalize_db_url(settings.DATABASE_URL), pool_pre_ping=True, pool_size=5, max_overflow=5)
     return _engine
 
 

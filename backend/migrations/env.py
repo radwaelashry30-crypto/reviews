@@ -11,7 +11,7 @@ from alembic import context
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings  # noqa: E402
-from app.db.base import Base  # noqa: E402
+from app.db.base import Base, _normalize_db_url  # noqa: E402
 from app.db import models  # noqa: E402  (registers ORM classes on Base.metadata)
 
 # this is the Alembic Config object, which provides
@@ -28,7 +28,7 @@ if config.config_file_name is not None:
 # `alembic revision --autogenerate` and `upgrade head` still work for local
 # development/testing without a real Postgres connection configured.
 db_url = settings.DATABASE_URL or f"sqlite:///{Path(__file__).resolve().parents[1] / 'dev.db'}"
-config.set_main_option("sqlalchemy.url", db_url)
+config.set_main_option("sqlalchemy.url", _normalize_db_url(db_url))
 
 target_metadata = Base.metadata
 

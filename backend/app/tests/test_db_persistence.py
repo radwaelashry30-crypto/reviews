@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 import app.db.base as db_base
-from app.db.base import Base
+from app.db.base import Base, _normalize_db_url
 from app.db.models import BatchUploadJob, PredictionFeedback, SentimentAnalysis, SentimentAnalysisAspect
 
 
@@ -55,6 +55,31 @@ def session(db_available):
     s = factory()
     yield s
     s.close()
+
+
+# --------------------------------------------------------------------------- #
+# URL normalization
+# --------------------------------------------------------------------------- #
+# Regression tests for a real deployment bug: Render hands out plain
+# `postgresql://` URLs, which SQLAlchemy defaults to the psycopg2 dialect for
+# -- but this project installs psycopg (v3). Without normalization, every
+# real deployment failed at connection time with "No module named 'psycopg2'".
+
+def test_normalize_postgresql_url_adds_psycopg_driver():
+    assert _normalize_db_url("postgresql://user:pass@host/db") == "postgresql+psycopg://user:pass@host/db"
+
+
+def test_normalize_postgres_scheme_url_adds_psycopg_driver():
+    """Some hosts (Heroku-style) hand out `postgres://` instead of `postgresql://`."""
+    assert _normalize_db_url("postgres://user:pass@host/db") == "postgresql+psycopg://user:pass@host/db"
+
+
+def test_normalize_sqlite_url_unchanged():
+    assert _normalize_db_url("sqlite:///dev.db") == "sqlite:///dev.db"
+
+
+def test_normalize_already_explicit_driver_unchanged():
+    assert _normalize_db_url("postgresql+psycopg://user:pass@host/db") == "postgresql+psycopg://user:pass@host/db"
 
 
 # --------------------------------------------------------------------------- #

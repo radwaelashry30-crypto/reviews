@@ -61,6 +61,12 @@ export interface FakeCheckResult {
   fake_probability?: number;
   label_semantics_verified?: boolean;
   disclaimer?: string;
+  /** True if the fake/real verdict held up under meaning-preserving rewordings of the same review. */
+  stability_checked?: boolean;
+  n_probes?: number;
+  verdict_spread?: number;
+  reliable?: boolean;
+  reliability_note?: string;
 }
 
 export interface AspectResult {

@@ -43,6 +43,8 @@ fraud signal.
 """
 from __future__ import annotations
 
+import re
+
 FAKE_REVIEW_MODEL = "jb10231/fake-review-detector"
 DEFAULT_BATCH_SIZE = 32
 
@@ -60,7 +62,13 @@ DISCLAIMER = (
     "module ASSUMES LABEL_1 = fake (common convention + empirically the "
     "minority class), but that mapping is not verified. Domain shift "
     "(translated Olist reviews vs. the model's original training data) is "
-    "also unverified. Do not treat this output as a validated fraud signal."
+    "also unverified. Do not treat this output as a validated fraud signal. "
+    "A retrained replacement (real, verified dataset, held-out accuracy 97%) was "
+    "tested against the same instability check and failed it the same way, so this "
+    "looks structural rather than a fixable bug in one checkpoint -- see "
+    "scripts/paraphrase_stability_test.py and scripts/fake_review_decision_basis_test.py. "
+    "Each verdict below is now automatically re-checked against a reworded version of "
+    "the same review; see 'reliable'/'reliability_note' for whether THIS verdict held up."
 )
 
 
@@ -110,6 +118,134 @@ def score_single_review(pipe, text: str) -> dict:
         "fake_probability": round(fake_prob, 4),
         "label_semantics_verified": False,
         "disclaimer": DISCLAIMER,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Self-consistency check
+# --------------------------------------------------------------------------- #
+# Retraining on a real, verified dataset (scripts/train_fake_review_detector.py)
+# did NOT fix the instability -- the retrained checkpoint failed the same
+# paraphrase-stability test the same way (see scripts/paraphrase_stability_test.py
+# results), and a follow-up diagnostic (scripts/fake_review_decision_basis_test.py)
+# found no interpretable textual property (length, sentiment, specificity,
+# register, punctuation, personal detail) that predicts the verdict either --
+# three of four near-identical length variants of ONE sentence scored ~0% fake
+# probability while a fourth spiked to 98.5%. This looks like a structural
+# property of fine-tuned AI-text classifiers on this kind of task, not a fixable
+# bug in one checkpoint.
+#
+# Since the model can't be made stable, this stops trying to hide that fact
+# behind a static disclaimer and instead measures it per-review: score the
+# review AND a couple of meaning-preserving rewordings of it, and if the
+# verdict swings between them, say so explicitly rather than silently
+# returning whichever one run happened to answer.
+
+def _wordnet_variant(text: str, max_swaps: int = 3) -> str | None:
+    """Meaning-preserving variant via WordNet synonym substitution on up to
+    `max_swaps` content words. Deterministic (always picks the first distinct
+    lemma found) so repeated calls on the same text are reproducible. Returns
+    None if WordNet's corpus data isn't available locally."""
+    try:
+        from nltk.corpus import wordnet as wn
+    except (ImportError, LookupError):
+        return None
+
+    words = text.split()
+    new_words = []
+    swapped = 0
+    for word in words:
+        core = re.sub(r"[^a-zA-Z]", "", word)
+        replacement = None
+        if swapped < max_swaps and len(core) > 3:
+            try:
+                synsets = wn.synsets(core.lower())
+            except LookupError:
+                return None
+            for syn in synsets:
+                for lemma in syn.lemmas():
+                    name = lemma.name()
+                    if "_" not in name and name.lower() != core.lower():
+                        replacement = name
+                        break
+                if replacement:
+                    break
+        if replacement:
+            new_words.append(word.replace(core, replacement, 1))
+            swapped += 1
+        else:
+            new_words.append(word)
+    return " ".join(new_words) if swapped else None
+
+
+def _structural_variant(text: str) -> str:
+    """Fallback probe when WordNet data isn't available: appends a short,
+    meaning-neutral clause. Only used to test verdict stability, never shown
+    to the user as "the" analyzed text -- see module docstring for why even
+    this kind of trivial, meaning-preserving change is a valid stability
+    probe for this specific model (length alone was measured to flip its
+    verdict with no content change at all)."""
+    return text.rstrip(". ") + ", overall."
+
+
+def generate_stability_probes(text: str, n: int = 2) -> list[str]:
+    """Returns up to `n` meaning-preserving variants of `text` to probe
+    verdict stability against. Prefers WordNet synonym substitution; falls
+    back to a structural probe if WordNet data isn't available, so this
+    always produces at least one probe."""
+    variants: list[str] = []
+    wn_variant = _wordnet_variant(text)
+    if wn_variant and wn_variant != text:
+        variants.append(wn_variant)
+    while len(variants) < n:
+        source = variants[-1] if variants else text
+        variants.append(_structural_variant(source))
+    return variants[:n]
+
+
+def score_with_stability_check(pipe, text: str, n_variants: int = 2, instability_threshold: float = 0.2) -> dict:
+    """Scores `text`, then probes whether that verdict holds up under a
+    couple of meaning-preserving rewordings of the SAME review. Returns the
+    same shape as `score_single_review` plus:
+      - reliable: bool -- False if fake_probability swung by more than
+        `instability_threshold` across the probes (default 0.2 = 20 points).
+      - verdict_spread: the actual max-min swing observed.
+      - reliability_note: a plain-language explanation of what that means.
+
+    This does not fix the underlying model -- nothing at the config/prompting
+    level can (see module docstring and MODEL_COMPARISON_AUDIT.md). It turns
+    a hidden failure mode into an explicit, per-review signal: a caller can
+    now tell "verdict FAKE, and stable under rewording" apart from "verdict
+    FAKE, but flips to REAL if you reword it slightly" instead of only ever
+    seeing the first one.
+    """
+    base = score_single_review(pipe, text)
+    if not base.get("available"):
+        return base
+
+    probes = generate_stability_probes(text, n=n_variants)
+    probe_probs = []
+    for probe_text in probes:
+        result = score_single_review(pipe, probe_text)
+        if result.get("available"):
+            probe_probs.append(result["fake_probability"])
+
+    all_probs = [base["fake_probability"], *probe_probs]
+    spread = round(max(all_probs) - min(all_probs), 4) if len(all_probs) > 1 else 0.0
+    reliable = spread < instability_threshold
+
+    return {
+        **base,
+        "stability_checked": True,
+        "n_probes": len(probe_probs),
+        "verdict_spread": spread,
+        "reliable": reliable,
+        "reliability_note": (
+            "Verdict was stable across meaning-preserving rewordings of this review."
+            if reliable else
+            f"Verdict changed by {spread:.0%} under a meaning-preserving reword of this SAME "
+            "review -- do not trust this specific fake/real label."
+        ),
     }
 
 

@@ -34,3 +34,10 @@ psycopg[binary]>=3.1
 # Training-only, not needed to serve the app -- pulls theArijitDas/Fake-Reviews-Dataset
 # for scripts/train_fake_review_detector.py.
 datasets>=2.19
+
+# WordNet synonym data for the fake-review self-consistency check (see
+# app/ml/fake_review_detection.py's generate_stability_probes). Optional --
+# falls back to a structural probe if the corpus data isn't downloaded
+# (nltk.download("wordnet")), same graceful-degradation pattern as
+# ALLOW_EXTERNAL_MODEL_DOWNLOADS elsewhere in this project.
+nltk>=3.9

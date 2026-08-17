@@ -263,6 +263,12 @@ body {
 .fake-check-card.fake-check-exploratory { border-color: var(--border); }
 .fake-check-card.fake-check-exploratory .fake-check-verdict { color: var(--text-muted); font-size: 1rem; }
 
+/* Reliability signal from re-scoring the same review under a meaning-preserving
+   reword -- deliberately not a fake/real color, just flags whether THIS verdict held up. */
+.fake-check-stability { font-size: 0.85rem; font-weight: 600; margin-top: 0.4rem; }
+.fake-check-stability.stable { color: var(--text-muted); }
+.fake-check-stability.unstable { color: var(--accent-strong); }
+
 .aspects-list { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
 .aspect-row { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
 .aspect-name { text-transform: capitalize; color: var(--text-muted); }

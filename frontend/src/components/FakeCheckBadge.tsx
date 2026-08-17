@@ -21,6 +21,13 @@ export function FakeCheckBadge({ result }: { result: FakeCheckResult | null }) {
       <div className="fake-check-verdict">
         {result.is_fake ? "Model output: LABEL_1 (assumed “fake”)" : "Model output: LABEL_0 (assumed “real”)"}
       </div>
+      {result.stability_checked && (
+        <div className={`fake-check-stability ${result.reliable ? "stable" : "unstable"}`}>
+          {result.reliable ? "✓ Stable under rewording" : "⚠ Unstable under rewording"}
+          {typeof result.verdict_spread === "number" && ` (spread: ${(result.verdict_spread * 100).toFixed(0)}%)`}
+        </div>
+      )}
+      {result.reliability_note && <p className="limitations-note">{result.reliability_note}</p>}
       <p className="limitations-note">{result.disclaimer}</p>
     </div>
   );

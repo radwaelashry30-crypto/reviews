@@ -20,7 +20,7 @@ are never loaded at API startup -- see ModelRegistry.get_fake_review_pipeline
 from __future__ import annotations
 
 from app.ml.absa import ABSA_ASPECTS, analyze_aspects_single
-from app.ml.fake_review_detection import score_single_review
+from app.ml.fake_review_detection import score_with_stability_check
 from app.services.model_registry import ModelRegistry
 from app.services.sentiment_service import predict_sentiment
 
@@ -38,7 +38,7 @@ def run_full_pipeline(
     if sentiment["label"] == "Negative":
         pipe = registry.get_fake_review_pipeline()
         if pipe is not None:
-            fake_check = score_single_review(pipe, analyzed_text)
+            fake_check = score_with_stability_check(pipe, analyzed_text)
         else:
             status = registry.statuses.get("fake_review")
             fake_check = {"available": False, "reason": status.error if status else "not loaded"}

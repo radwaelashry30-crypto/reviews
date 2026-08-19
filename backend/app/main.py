@@ -56,6 +56,11 @@ def _check_metrics_freshness() -> None:
     overwritten without regenerating the published metrics that describe
     it). Never raises; a missing/unreadable metrics file just means there's
     nothing to compare yet."""
+    if not settings.ENABLE_BERT:
+        # Nothing to compare against: this deployment never loads the BERT
+        # checkpoint (see model_registry.py), and hashing a ~670MB weight
+        # file it isn't even serving is pure wasted I/O on a low-RAM host.
+        return
     try:
         import json
 

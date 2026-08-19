@@ -60,7 +60,9 @@ def checkpoint_fingerprint(model_dir: Path) -> str | None:
         return None
     h = hashlib.sha256()
     for p in weight_files:
-        h.update(p.read_bytes())
+        with open(p, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
     return h.hexdigest()[:16]
 
 

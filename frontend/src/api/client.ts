@@ -69,8 +69,17 @@ export async function apiGet<T>(path: string, params?: Record<string, unknown>):
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  // Generated ONCE per logical call, outside withColdStartRetry -- both the
+  // original attempt and its cold-start retry carry the same key, so if the
+  // server actually finished the first attempt (the response just never made
+  // it back before the client gave up), the retry replays that saved result
+  // instead of creating a second history row for the same request. Backend:
+  // POST /predict reads this header (see app/api/v1/endpoints/sentiment.py).
+  const idempotencyKey = crypto.randomUUID();
   try {
-    const resp = await withColdStartRetry(() => httpClient.post<ApiResponse<T>>(path, body));
+    const resp = await withColdStartRetry(() =>
+      httpClient.post<ApiResponse<T>>(path, body, { headers: { "Idempotency-Key": idempotencyKey } }),
+    );
     return resp.data.data;
   } catch (error) {
     if (import.meta.env.DEV) console.error(`POST ${path} failed`, error);

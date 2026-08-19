@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, File, Form, Path, Query, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from app.core.exceptions import InvalidRequestError, ResourceNotFoundError
+from app.core.exceptions import InvalidRequestError, ProcessingTimeoutError, ResourceNotFoundError
 from app.core.rate_limit import limiter
 from app.db.base import db_configured
 from app.dependencies import get_model_registry
@@ -24,6 +26,14 @@ router = APIRouter(prefix="/sentiment", tags=["sentiment"])
 # row cap) with headroom.
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 _UPLOAD_CHUNK_SIZE = 1024 * 1024
+
+# Rate limiting alone caps requests per minute, not concurrent memory use --
+# two uploads landing in the same few seconds can each hold a full batch of
+# rows/model activations in memory at once. On a 512MB host that stacks
+# toward OOM fast. This bounds how many uploads actually run their heavy
+# classification work at the same time; the rest simply wait their turn
+# rather than racing for the same memory.
+_UPLOAD_CONCURRENCY = asyncio.Semaphore(2)
 
 
 async def _read_upload_bounded(file: UploadFile, max_bytes: int = MAX_UPLOAD_BYTES) -> bytes:
@@ -46,11 +56,23 @@ async def _read_upload_bounded(file: UploadFile, max_bytes: int = MAX_UPLOAD_BYT
 @router.post("/predict")
 @limiter.limit("30/minute")
 def predict(request: Request, payload: SentimentPredictionRequest, registry: ModelRegistry = Depends(get_model_registry)):
+    # A client retry after a network timeout can't tell whether the server
+    # actually finished the write before the connection dropped -- without
+    # this, that retry creates a second history row for the same logical
+    # request (frontend/src/api/client.ts retries POSTs on a cold start).
+    # An unset/unknown key just means "treat as a fresh request," same as
+    # every other best-effort persistence path in this service.
+    idempotency_key = request.headers.get("idempotency-key")
+    if idempotency_key:
+        cached = persistence_service.get_by_idempotency_key(idempotency_key)
+        if cached is not None:
+            return envelope({**cached, "idempotent_replay": True}, model_version=payload.model_name)
+
     result = sentiment_service.predict_sentiment(
         registry, payload.text, model_name=payload.model_name,
         source_language=payload.source_language, translate=payload.translate,
     )
-    analysis_id = persistence_service.try_save_analysis(payload.text, result)
+    analysis_id = persistence_service.try_save_analysis(payload.text, result, idempotency_key=idempotency_key)
     return envelope({**result, "analysis_id": analysis_id}, model_version=payload.model_name)
 
 
@@ -133,10 +155,17 @@ async def upload_file(
     # endpoint's event loop for minutes, stalling every other request on the
     # process (including /health) until it returns. run_in_threadpool moves
     # it off the event loop onto FastAPI's worker thread pool instead.
-    result = await run_in_threadpool(
-        file_batch_service.classify_review_file, registry, file.filename, content,
-        model_name=model_name, advanced=advanced,
-    )
+    async with _UPLOAD_CONCURRENCY:
+        try:
+            result = await asyncio.wait_for(
+                run_in_threadpool(
+                    file_batch_service.classify_review_file, registry, file.filename, content,
+                    model_name=model_name, advanced=advanced,
+                ),
+                timeout=300,
+            )
+        except TimeoutError:
+            raise ProcessingTimeoutError("Classifying this file took too long (over 5 minutes). Try a smaller file or disable advanced=true.")
     upload_id = upload_store.save_upload_result(result)
     return envelope({**result, "upload_id": upload_id, "retention_days": upload_store.RETENTION_DAYS}, model_version=model_name)
 

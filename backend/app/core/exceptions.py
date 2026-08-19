@@ -35,6 +35,11 @@ class ResourceNotFoundError(AppError):
         super().__init__(message, code="NOT_FOUND", status_code=status.HTTP_404_NOT_FOUND, details=details)
 
 
+class ProcessingTimeoutError(AppError):
+    def __init__(self, message: str, details: dict | None = None):
+        super().__init__(message, code="PROCESSING_TIMEOUT", status_code=status.HTTP_504_GATEWAY_TIMEOUT, details=details)
+
+
 def _error_envelope(code: str, message: str, details: dict, request_id: str) -> dict:
     return {
         "success": False,

@@ -22,6 +22,7 @@ def save_analysis(
     text: str,
     prediction: dict[str, Any],
     aspects: list[dict[str, Any]] | None = None,
+    idempotency_key: str | None = None,
 ) -> SentimentAnalysis:
     """Persists one sentiment prediction (and optional Task-3 aspect rows)
     in a single transaction. `prediction` is the dict shape returned by
@@ -39,6 +40,7 @@ def save_analysis(
         model_name=prediction["model_name"],
         source_language=prediction["source_language"],
         translated=prediction["translated"],
+        idempotency_key=idempotency_key,
     )
     if aspects:
         row.aspects = [
@@ -53,6 +55,12 @@ def save_analysis(
 
 def get_analysis(session: Session, analysis_id: str) -> SentimentAnalysis | None:
     return session.get(SentimentAnalysis, analysis_id)
+
+
+def get_by_idempotency_key(session: Session, idempotency_key: str) -> SentimentAnalysis | None:
+    return session.execute(
+        select(SentimentAnalysis).where(SentimentAnalysis.idempotency_key == idempotency_key)
+    ).scalar_one_or_none()
 
 
 def list_analyses(

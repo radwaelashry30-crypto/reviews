@@ -14,7 +14,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -28,6 +28,7 @@ def _new_id() -> str:
 
 class SentimentAnalysis(Base):
     __tablename__ = "sentiment_analyses"
+    __table_args__ = (UniqueConstraint("idempotency_key", name="ux_analyses_idempotency_key"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_new_id)
     text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -40,6 +41,13 @@ class SentimentAnalysis(Base):
     model_name: Mapped[str] = mapped_column(String(16), nullable=False)
     source_language: Mapped[str] = mapped_column(String(8), nullable=False)
     translated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Client-supplied (Idempotency-Key header on POST /predict) so a client
+    # retry after a timeout -- where the server actually finished the write
+    # but the response never made it back -- replays the saved result
+    # instead of creating a second history row for the same logical request.
+    # Nullable + unique: most callers won't send one, and NULLs don't
+    # collide under a unique constraint in Postgres/SQLite.
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     aspects: Mapped[list["SentimentAnalysisAspect"]] = relationship(back_populates="analysis", cascade="all, delete-orphan")

@@ -20,6 +20,10 @@ export interface SentimentPrediction {
   source_language: string;
   translated: boolean;
   cleaned_text: string;
+  /** Present when the backend has a database configured (see DATABASE_SETUP.md); null otherwise. */
+  analysis_id: string | null;
+  /** True only when this response was replayed from a matching Idempotency-Key, not freshly computed. */
+  idempotent_replay?: boolean;
 }
 
 export interface BatchPredictionItem {

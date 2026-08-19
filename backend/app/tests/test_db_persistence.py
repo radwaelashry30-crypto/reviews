@@ -247,6 +247,44 @@ def test_predict_persists_and_returns_analysis_id(client, db_available):
     assert len(data["analysis_id"]) == 32
 
 
+def test_predict_with_idempotency_key_replays_instead_of_duplicating(client, db_available):
+    """Regression test: a client retry with the SAME Idempotency-Key header
+    (e.g. after a timeout where the server actually finished) must return
+    the original saved result, not create a second history row."""
+    key = "test-idem-key-12345"
+    resp1 = client.post(
+        "/api/v1/sentiment/predict",
+        json={"text": "Fast shipping, great quality.", "model_name": "cnn2d"},
+        headers={"Idempotency-Key": key},
+    )
+    assert resp1.status_code == 200
+    data1 = resp1.json()["data"]
+    assert data1["analysis_id"] is not None
+    assert "idempotent_replay" not in data1
+
+    resp2 = client.post(
+        "/api/v1/sentiment/predict",
+        json={"text": "Fast shipping, great quality.", "model_name": "cnn2d"},
+        headers={"Idempotency-Key": key},
+    )
+    assert resp2.status_code == 200
+    data2 = resp2.json()["data"]
+    assert data2["analysis_id"] == data1["analysis_id"]
+    assert data2["idempotent_replay"] is True
+
+    list_resp = client.get("/api/v1/sentiment/analyses?limit=100")
+    matching = [r for r in list_resp.json()["data"]["items"] if r["analysis_id"] == data1["analysis_id"]]
+    assert len(matching) == 1, "idempotency key must prevent a duplicate history row, not just a duplicate response"
+
+
+def test_predict_without_idempotency_key_creates_separate_rows(client, db_available):
+    """Confirms the fix is opt-in -- calls with no key (the common case)
+    still behave exactly as before."""
+    resp1 = client.post("/api/v1/sentiment/predict", json={"text": "Works great.", "model_name": "cnn2d"})
+    resp2 = client.post("/api/v1/sentiment/predict", json={"text": "Works great.", "model_name": "cnn2d"})
+    assert resp1.json()["data"]["analysis_id"] != resp2.json()["data"]["analysis_id"]
+
+
 def test_analysis_history_endpoint_returns_persisted_row(client, db_available):
     if not _bert_available(client):
         pytest.skip("Fine-tuned BERT artifact not available in this environment.")

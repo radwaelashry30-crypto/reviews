@@ -3,10 +3,11 @@
   "schema_version": "1.0",
   "augmentation": {
     "amazon_sources": [
-      "C:\\Users\\User1\\Downloads\\Fake news\\Spam & no spam\\Dataset\\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products.csv",
-      "C:\\Users\\User1\\Downloads\\Fake news\\Spam & no spam\\Dataset\\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products_May19.csv",
-      "C:\\Users\\User1\\Downloads\\Fake news\\Spam & no spam\\Dataset\\1429_1.csv"
+      "Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products.csv",
+      "Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products_May19.csv",
+      "1429_1.csv"
     ],
+    "amazon_sources_note": "Datafiniti's 'Consumer Reviews of Amazon Products' dataset (Kaggle). Local machine-specific paths were committed here previously and have been redacted -- see Technical Review #17. Filenames only; not independently reproducible from this repo alone without re-downloading the same Kaggle dataset.",
     "sample_size": 3682,
     "negation_ratio_target": 0.6,
     "combined_train_size": 31642

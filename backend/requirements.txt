@@ -1,43 +1,43 @@
-fastapi>=0.110
-uvicorn[standard]>=0.29
-pydantic>=2.6
-pydantic-settings>=2.2
-torch>=2.2
-transformers>=4.40
-tokenizers>=0.19
-sentencepiece>=0.2
-sacremoses>=0.1
-numpy>=1.26
-pandas>=2.2
-pyarrow>=15.0
-scikit-learn>=1.4
-scipy>=1.12
-matplotlib>=3.8
-plotly>=5.20
-seaborn>=0.13
-wordcloud>=1.9
-tqdm>=4.66
-shap>=0.45
-joblib>=1.3
-pytest>=8.0
-httpx>=0.27
-python-multipart>=0.0.9
-openpyxl>=3.1
-slowapi>=0.1.9
+# Runtime dependencies only -- what the deployed API process actually
+# imports to serve requests. Training/analysis/plotting/test tooling lives
+# in requirements-dev.txt so the production image doesn't pay for it (see
+# backend/Dockerfile and Technical Review #18/#20).
+#
+# Upper-bounded (not bare >=): an unbounded dependency means the first
+# breaking release upstream stops the app with no warning, and two builds
+# on different days can silently resolve to different environments. scikit-
+# learn artifacts (RFM scaler/kmeans) are pickled -- unpickling across an
+# unplanned scikit-learn version jump has no compatibility guarantee at all
+# (see app/ml/segmentation.py's save/load functions).
+fastapi>=0.110,<0.120
+uvicorn[standard]>=0.29,<0.35
+pydantic>=2.6,<3
+pydantic-settings>=2.2,<3
+torch>=2.2,<2.6
+transformers>=4.40,<4.50
+tokenizers>=0.19,<0.21
+sentencepiece>=0.2,<0.3
+sacremoses>=0.1,<0.2
+numpy>=1.26,<2.0
+pandas>=2.2,<3
+pyarrow>=15.0,<18
+scikit-learn>=1.4,<1.6
+scipy>=1.12,<1.14
+shap>=0.45,<0.47
+joblib>=1.3,<1.5
+python-multipart>=0.0.9,<0.1
+openpyxl>=3.1,<4
+slowapi>=0.1.9,<0.2
 
 # Optional database persistence layer (see DATABASE_SETUP.md). The app runs
 # fine with DATABASE_URL unset -- these are only exercised when it's set.
-sqlalchemy>=2.0
-alembic>=1.13
-psycopg[binary]>=3.1
-
-# Training-only, not needed to serve the app -- pulls theArijitDas/Fake-Reviews-Dataset
-# for scripts/train_fake_review_detector.py.
-datasets>=2.19
+sqlalchemy>=2.0,<2.1
+alembic>=1.13,<1.14
+psycopg[binary]>=3.1,<3.3
 
 # WordNet synonym data for the fake-review self-consistency check (see
 # app/ml/fake_review_detection.py's generate_stability_probes). Optional --
 # falls back to a structural probe if the corpus data isn't downloaded
 # (nltk.download("wordnet")), same graceful-degradation pattern as
-# ALLOW_EXTERNAL_MODEL_DOWNLOADS elsewhere in this project.
-nltk>=3.9
+# ENABLE_FAKE_REVIEW_MODULE elsewhere in this project.
+nltk>=3.9,<3.10

@@ -1,0 +1,17 @@
+.git/
+frontend/
+notebooks/
+figures/
+reports/
+output/
+original_project_backup/
+data/raw/
+data/interim/
+data/uploads/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+backend/dev.db
+backend/*.db
+.env
+.env.local

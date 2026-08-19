@@ -81,6 +81,17 @@ def stage_segment(orders_enriched: pd.DataFrame) -> None:
     print("Building RFM segmentation ...")
     rfm = seg.build_rfm_table(orders_enriched)
     rfm_scaled, scaler = seg.scale_rfm_features(rfm)
+
+    print("Selecting k via silhouette score (evidence only -- RFM_N_CLUSTERS stays the business-chosen default unless overridden) ...")
+    best_k, k_evidence = seg.select_k(rfm_scaled)
+    write_json(PROJECT_ROOT / "results" / "rfm_k_selection.json", {
+        "selected_by_silhouette": best_k,
+        "used_in_production": seg.RFM_N_CLUSTERS,
+        "criterion": "max silhouette",
+        "evidence": k_evidence,
+    })
+    print(f"Silhouette-best k={best_k} (evidence in results/rfm_k_selection.json); using RFM_N_CLUSTERS={seg.RFM_N_CLUSTERS} (documented business choice, see MODEL_CARD.md).")
+
     kmeans = seg.fit_rfm_kmeans(rfm_scaled)
     rfm["Cluster"] = kmeans.labels_
     rfm, cluster_label_map = seg.assign_business_segment_labels(rfm)

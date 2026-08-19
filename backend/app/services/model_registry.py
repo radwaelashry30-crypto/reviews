@@ -197,10 +197,16 @@ class ModelRegistry:
     # -- lazy-loaded optional/experimental models (Task 2, Task 3) ------
     def get_fake_review_pipeline(self):
         """Loads jb10231/fake-review-detector on first call, then reuses it.
-        Returns None (never raises) if downloads are disabled or loading fails --
-        callers degrade to an 'unavailable' response, never a crash."""
-        if not settings.ALLOW_EXTERNAL_MODEL_DOWNLOADS:
-            self.statuses["fake_review"] = ArtifactStatus("fake_review", "unavailable", None, "ALLOW_EXTERNAL_MODEL_DOWNLOADS=false")
+        Returns None (never raises) if the module is disabled or loading
+        fails -- callers degrade to an 'unavailable' response, never a crash.
+
+        Gated on its own dedicated flag (not ALLOW_EXTERNAL_MODEL_DOWNLOADS)
+        because this module has a documented structural reliability problem
+        that plain "haven't verified label semantics yet" caveats on other
+        experimental models don't have -- see ENABLE_FAKE_REVIEW_MODULE's
+        docstring in app/core/config.py."""
+        if not settings.ENABLE_FAKE_REVIEW_MODULE:
+            self.statuses["fake_review"] = ArtifactStatus("fake_review", "unavailable", None, "ENABLE_FAKE_REVIEW_MODULE=false")
             return None
         from app.ml.fake_review_detection import load_fake_review_pipeline
 

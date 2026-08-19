@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     ENABLE_CNN2D: bool = True
     ENABLE_TRANSLATION: bool = False
     ALLOW_EXTERNAL_MODEL_DOWNLOADS: bool = False
+    # Separate from ALLOW_EXTERNAL_MODEL_DOWNLOADS (which also gates ABSA) so
+    # enabling ABSA doesn't silently also expose this specific module: its
+    # own module docstring documents a structural, unfixed reliability
+    # problem (verdicts flip under meaning-preserving paraphrasing, confirmed
+    # on two independently trained checkpoints). Off by default -- see
+    # Technical Review #09.
+    ENABLE_FAKE_REVIEW_MODULE: bool = False
     # Number of trusted reverse proxies between the client and this process
     # (Render/Vercel/any load balancer = 1 hop). Used to pick the real client
     # IP out of X-Forwarded-For for rate limiting -- everything before that

@@ -9,7 +9,15 @@
 # learn artifacts (RFM scaler/kmeans) are pickled -- unpickling across an
 # unplanned scikit-learn version jump has no compatibility guarantee at all
 # (see app/ml/segmentation.py's save/load functions).
-fastapi>=0.110,<0.120
+# fastapi<0.120 was a real deployed bug, not caution: a fresh install
+# resolved fastapi==0.119.1 (within that old bound) combined with
+# pydantic==2.13.4, which has a confirmed UploadFile TypeAdapter/forward-ref
+# bug in that specific combination ("... is not fully defined") -- it broke
+# every upload-file test AND cascaded into unrelated endpoints via a shared
+# schema-build failure. fastapi==0.141.1 (this new upper bound) has been
+# running this exact test suite successfully for this entire project;
+# confirmed via CI after the fix (see CHANGELOG.md).
+fastapi>=0.115,<0.145
 uvicorn[standard]>=0.29,<0.35
 pydantic>=2.6,<3
 pydantic-settings>=2.2,<3

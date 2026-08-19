@@ -51,6 +51,19 @@ class Settings(BaseSettings):
     ENABLE_CNN2D: bool = True
     ENABLE_TRANSLATION: bool = False
     ALLOW_EXTERNAL_MODEL_DOWNLOADS: bool = False
+    # Number of trusted reverse proxies between the client and this process
+    # (Render/Vercel/any load balancer = 1 hop). Used to pick the real client
+    # IP out of X-Forwarded-For for rate limiting -- everything before that
+    # position in the header is attacker-controlled, only entries appended by
+    # a trusted proxy are safe to key a rate limit on. 0 = trust the raw
+    # socket peer address only (local dev, no proxy in front).
+    TRUSTED_PROXY_HOPS: int = 1
+
+    # Off by default so the current public deployment keeps working exactly
+    # as-is. Set REQUIRE_API_KEY=true and at least one real value in API_KEYS
+    # (comma-separated env var, or JSON array in .env) to lock the API down.
+    REQUIRE_API_KEY: bool = False
+    API_KEYS: list[str] = Field(default_factory=list)
     MAX_REVIEW_LENGTH: int = 2000
     MAX_BATCH_SIZE: int = 64
 

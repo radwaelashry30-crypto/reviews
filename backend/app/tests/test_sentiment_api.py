@@ -196,7 +196,9 @@ def test_upload_file_result_retrievable_by_id(client):
 
 
 def test_upload_file_unknown_id_returns_404(client):
-    resp = client.get("/api/v1/sentiment/upload-file/does-not-exist")
+    # Well-formed (32-char hex, matching uuid4().hex) but never issued -- see
+    # test_upload_id_validation.py for malformed-id rejection (422).
+    resp = client.get("/api/v1/sentiment/upload-file/" + "0" * 32)
     assert resp.status_code == 404
 
 

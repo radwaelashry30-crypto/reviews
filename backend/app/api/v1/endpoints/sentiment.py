@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Path, Query, Request, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.core.exceptions import InvalidRequestError, ResourceNotFoundError
 from app.core.rate_limit import limiter
@@ -127,13 +128,24 @@ async def upload_file(
     if not content:
         raise InvalidRequestError("The uploaded file is empty.")
 
-    result = file_batch_service.classify_review_file(registry, file.filename, content, model_name=model_name, advanced=advanced)
+    # classify_review_file is synchronous and CPU-heavy (up to 2,000 BERT
+    # forward passes) -- calling it directly here would block this async
+    # endpoint's event loop for minutes, stalling every other request on the
+    # process (including /health) until it returns. run_in_threadpool moves
+    # it off the event loop onto FastAPI's worker thread pool instead.
+    result = await run_in_threadpool(
+        file_batch_service.classify_review_file, registry, file.filename, content,
+        model_name=model_name, advanced=advanced,
+    )
     upload_id = upload_store.save_upload_result(result)
     return envelope({**result, "upload_id": upload_id, "retention_days": upload_store.RETENTION_DAYS}, model_version=model_name)
 
 
+UPLOAD_ID_PATTERN = r"^[0-9a-f]{32}$"  # uuid4().hex, exactly -- nothing else
+
+
 @router.get("/upload-file/{upload_id}")
-def get_uploaded_result(upload_id: str):
+def get_uploaded_result(upload_id: str = Path(..., pattern=UPLOAD_ID_PATTERN)):
     """Retrieves a previously classified file's results (kept for 7 days), so
     reloading the page or coming back later doesn't require re-uploading."""
     saved = upload_store.load_upload_result(upload_id)

@@ -6,6 +6,7 @@ touches disk to load a model — they only ever read from this registry.
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -50,6 +51,33 @@ class ModelRegistry:
         # locally) and the BERT model that's already loaded -- no separate
         # external download, so not gated by ALLOW_EXTERNAL_MODEL_DOWNLOADS.
         self.shap_explainer = None
+        # FastAPI runs sync `def` endpoints in a thread pool, so two
+        # concurrent first requests could both see `self.absa_pipe is None`
+        # and both start loading a 706MB model at once -- on a memory-
+        # constrained host that's a guaranteed OOM. One lock per lazily
+        # loaded resource (not one shared lock) so loading fake_review
+        # doesn't block a concurrent absa/shap load unrelated to it.
+        self._locks = {name: threading.Lock() for name in ("fake_review", "absa", "shap")}
+
+    def _lazy_load(self, name: str, attr: str, loader):
+        """Thread-safe lazy load: check, lock, check again. `loader` is
+        called at most once even under concurrent first-time callers."""
+        current = getattr(self, attr)
+        if current is not None:
+            return current  # fast path -- no lock once loaded
+        with self._locks[name]:
+            current = getattr(self, attr)  # re-check: another thread may have loaded it while we waited
+            if current is not None:
+                return current
+            try:
+                loaded = loader()
+                setattr(self, attr, loaded)
+                self.statuses[name] = ArtifactStatus(name, "available", None, extra={"device": self.device})
+                return loaded
+            except Exception as e:  # noqa: BLE001
+                logger.exception("Lazy load of '%s' failed", name)
+                self.statuses[name] = ArtifactStatus(name, "loading_failed", None, str(e))
+                return None
 
     # -- loading -------------------------------------------------------
     def load_all(self) -> None:
@@ -171,29 +199,18 @@ class ModelRegistry:
         """Loads jb10231/fake-review-detector on first call, then reuses it.
         Returns None (never raises) if downloads are disabled or loading fails --
         callers degrade to an 'unavailable' response, never a crash."""
-        if self.fake_review_pipe is not None:
-            return self.fake_review_pipe
         if not settings.ALLOW_EXTERNAL_MODEL_DOWNLOADS:
             self.statuses["fake_review"] = ArtifactStatus("fake_review", "unavailable", None, "ALLOW_EXTERNAL_MODEL_DOWNLOADS=false")
             return None
         from app.ml.fake_review_detection import load_fake_review_pipeline
 
-        try:
-            device_idx = 0 if self.device == "cuda" else -1
-            self.fake_review_pipe = load_fake_review_pipeline(device=device_idx)
-            self.statuses["fake_review"] = ArtifactStatus("fake_review", "available", None, extra={"device": self.device})
-            return self.fake_review_pipe
-        except Exception as e:  # noqa: BLE001
-            logger.exception("Failed to load fake-review-detector")
-            self.statuses["fake_review"] = ArtifactStatus("fake_review", "loading_failed", None, str(e))
-            return None
+        device_idx = 0 if self.device == "cuda" else -1
+        return self._lazy_load("fake_review", "fake_review_pipe", lambda: load_fake_review_pipeline(device=device_idx))
 
     def get_shap_explainer(self):
         """Loads a SHAP explainer wrapping the fine-tuned BERT model on first
         call, then reuses it. Requires BERT itself to be available (ENABLE_BERT=true)
         and the `shap` package installed -- returns None (never raises) otherwise."""
-        if self.shap_explainer is not None:
-            return self.shap_explainer
         if self.bert_model is None or self.bert_tokenizer is None:
             self.statuses["shap"] = ArtifactStatus("shap", "unavailable", None, "BERT model not available")
             return None
@@ -202,31 +219,15 @@ class ModelRegistry:
         if not is_shap_available():
             self.statuses["shap"] = ArtifactStatus("shap", "unavailable", None, "shap package not installed")
             return None
-        try:
-            device_idx = 0 if self.device == "cuda" else -1
-            self.shap_explainer = load_shap_explainer(self.bert_model, self.bert_tokenizer, device=device_idx)
-            self.statuses["shap"] = ArtifactStatus("shap", "available", None, extra={"device": self.device})
-            return self.shap_explainer
-        except Exception as e:  # noqa: BLE001
-            logger.exception("Failed to build SHAP explainer")
-            self.statuses["shap"] = ArtifactStatus("shap", "loading_failed", None, str(e))
-            return None
+        device_idx = 0 if self.device == "cuda" else -1
+        return self._lazy_load("shap", "shap_explainer", lambda: load_shap_explainer(self.bert_model, self.bert_tokenizer, device=device_idx))
 
     def get_absa_pipeline(self):
         """Loads yangheng/deberta-v3-base-absa-v1.1 on first call, then reuses it."""
-        if self.absa_pipe is not None:
-            return self.absa_pipe
         if not settings.ALLOW_EXTERNAL_MODEL_DOWNLOADS:
             self.statuses["absa"] = ArtifactStatus("absa", "unavailable", None, "ALLOW_EXTERNAL_MODEL_DOWNLOADS=false")
             return None
         from app.ml.absa import load_absa_pipeline
 
-        try:
-            device_idx = 0 if self.device == "cuda" else -1
-            self.absa_pipe = load_absa_pipeline(device=device_idx)
-            self.statuses["absa"] = ArtifactStatus("absa", "available", None, extra={"device": self.device})
-            return self.absa_pipe
-        except Exception as e:  # noqa: BLE001
-            logger.exception("Failed to load ABSA model")
-            self.statuses["absa"] = ArtifactStatus("absa", "loading_failed", None, str(e))
-            return None
+        device_idx = 0 if self.device == "cuda" else -1
+        return self._lazy_load("absa", "absa_pipe", lambda: load_absa_pipeline(device=device_idx))

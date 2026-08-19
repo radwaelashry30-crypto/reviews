@@ -17,16 +17,34 @@ the DB backend closes. See DATABASE_SETUP.md.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.core.config import settings
+from app.core.exceptions import InvalidRequestError
 from app.db.base import db_configured
 from app.ml.utils import to_json_safe
 
 RETENTION_DAYS = 7
 UPLOADS_DIR = settings.DATA_DIR / "uploads"
+
+# Defense in depth: the API layer already validates upload_id against this
+# same pattern (see UPLOAD_ID_PATTERN in api/v1/endpoints/sentiment.py), but
+# this module must not trust its caller -- an upload_id built into a
+# filesystem path with no validation of its own is a path-traversal
+# vulnerability regardless of what already ran upstream.
+_UPLOAD_ID_RE = re.compile(r"\A[0-9a-f]{32}\Z")
+
+
+def _upload_path(upload_id: str) -> Path:
+    if not _UPLOAD_ID_RE.match(upload_id):
+        raise InvalidRequestError("Malformed upload id.")
+    path = (UPLOADS_DIR / f"{upload_id}.json").resolve()
+    if not path.is_relative_to(UPLOADS_DIR.resolve()):
+        raise InvalidRequestError("Malformed upload id.")
+    return path
 
 
 def _now_iso() -> str:
@@ -60,13 +78,13 @@ def _save_upload_result_json(result: dict) -> str:
 
     upload_id = uuid.uuid4().hex
     payload = {"upload_id": upload_id, "created_at": _now_iso(), "result": to_json_safe(result)}
-    with open(UPLOADS_DIR / f"{upload_id}.json", "w", encoding="utf-8") as f:
+    with open(_upload_path(upload_id), "w", encoding="utf-8") as f:
         json.dump(payload, f)
     return upload_id
 
 
 def _load_upload_result_json(upload_id: str) -> dict | None:
-    path = UPLOADS_DIR / f"{upload_id}.json"
+    path = _upload_path(upload_id)
     if not path.is_file():
         return None
     with open(path, encoding="utf-8") as f:

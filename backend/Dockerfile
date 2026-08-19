@@ -19,4 +19,9 @@ EXPOSE 8000
 
 # Fails clearly at startup if a REQUIRED artifact is missing (see app/services/model_registry.py);
 # optional artifacts degrade to a documented "unavailable" status instead of crashing the app.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers/--forwarded-allow-ips: this always runs behind a reverse
+# proxy (Render). Without this, uvicorn ignores X-Forwarded-For entirely and
+# app.core.rate_limit's client_identity() falls back to the proxy's own
+# address for every request -- see Technical Review #15.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips", "*"]

@@ -13,11 +13,32 @@ from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from app.core.config import settings
+
 # Generous enough for normal dashboard/analytics polling; specific expensive
 # endpoints (model inference, file upload) set tighter per-route limits below.
 DEFAULT_LIMITS = ["120/minute"]
 
-limiter = Limiter(key_func=get_remote_address, default_limits=DEFAULT_LIMITS)
+
+def client_identity(request: Request) -> str:
+    """Behind a reverse proxy (Render, Vercel, any load balancer),
+    get_remote_address() returns the PROXY's own address for every request --
+    every real visitor shares one rate-limit bucket, which is both a false
+    denial-of-service against legitimate traffic and no real limit on any
+    single attacker. X-Forwarded-For is attacker-controlled at its FRONT
+    (a client can prepend fake hops), but each trusted proxy in the chain
+    appends the address it actually saw, so the entry TRUSTED_PROXY_HOPS
+    positions from the end is the one only the deployment's own
+    infrastructure could have written."""
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff and settings.TRUSTED_PROXY_HOPS > 0:
+        hops = [h.strip() for h in xff.split(",") if h.strip()]
+        if len(hops) >= settings.TRUSTED_PROXY_HOPS:
+            return f"ip:{hops[-settings.TRUSTED_PROXY_HOPS]}"
+    return f"ip:{get_remote_address(request)}"
+
+
+limiter = Limiter(key_func=client_identity, default_limits=DEFAULT_LIMITS)
 
 
 def register_rate_limiter(app) -> None:

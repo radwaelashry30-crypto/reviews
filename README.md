@@ -1,6 +1,6 @@
 # Olist Marketplace Analytics and Customer Sentiment Intelligence Platform
 
-End-to-end analytics, data engineering, and review-sentiment intelligence for the Olist Brazilian e-commerce marketplace — a FastAPI backend, a React/TypeScript frontend, and the full ML pipeline extracted and corrected from the original research notebook.
+An interactive analytics dashboard and review-sentiment classifier built on a fixed, static Olist Brazilian e-commerce research dataset (2016-2018) — a FastAPI backend, a React/TypeScript frontend, and the full ML pipeline extracted and corrected from the original research notebook. No live/streaming data source or scheduled refresh pipeline; every chart and prediction runs against the same processed snapshot (`data/processed/*.parquet`) or a request-time model call, not a live feed.
 
 ## 1. Overview
 

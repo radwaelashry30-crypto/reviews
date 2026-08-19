@@ -110,7 +110,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Olist Marketplace end-to-end analytics and review-sentiment intelligence API.",
+    description="Interactive analytics and review-sentiment intelligence API over a static Olist marketplace dataset (no live/streaming data source).",
     lifespan=lifespan,
 )
 

@@ -49,6 +49,34 @@ def _run_pending_migrations() -> None:
         logger.warning("Database: configured, but migration step failed (persistence may not work): %s", e)
 
 
+def _check_metrics_freshness() -> None:
+    """Warns loudly at startup if results/reproduced_metrics.json describes a
+    different BERT checkpoint than the one actually on disk -- the exact
+    failure mode a retraining run caused once already (a checkpoint was
+    overwritten without regenerating the published metrics that describe
+    it). Never raises; a missing/unreadable metrics file just means there's
+    nothing to compare yet."""
+    try:
+        import json
+
+        from app.ml.utils import checkpoint_fingerprint
+
+        metrics_path = settings.RESULTS_DIR / "reproduced_metrics.json"
+        if not metrics_path.is_file():
+            return
+        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+        recorded = metrics.get("bert", {}).get("checkpoint_sha256")
+        current = checkpoint_fingerprint(settings.BERT_MODEL_PATH)
+        if recorded and current and recorded != current:
+            logger.error(
+                "STALE METRICS: results/reproduced_metrics.json describes BERT checkpoint "
+                "%s, but the checkpoint on disk is %s. Re-run scripts/regenerate_metrics.py.",
+                recorded, current,
+            )
+    except Exception as e:
+        logger.warning("Metrics freshness check failed (non-fatal): %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting %s v%s (%s)", settings.APP_NAME, settings.APP_VERSION, settings.ENVIRONMENT)
@@ -64,6 +92,8 @@ async def lifespan(app: FastAPI):
     app.state.analytics_repository = repo
     logger.info("Loaded analytics datasets: %s", repo.available_datasets())
     logger.info("Loaded analytics results: %s", repo.available_results())
+
+    _check_metrics_freshness()
 
     from app.db.base import db_configured
 

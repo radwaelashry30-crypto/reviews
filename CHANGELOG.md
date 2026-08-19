@@ -20,7 +20,7 @@ Curated summary of major changes. Full commit history: `git log`.
 
 ## 2026-08 — Model fixes
 
-- **Fixed** a confirmed BERT blind spot: blunt late-delivery complaints ("the shipment coming late") were classified Positive at 99.5% confidence. Continued fine-tuning on real + synthetic negative delay examples dropped the false-positive rate on real delay complaints from 11.1% to 1.0% with no regression elsewhere.
+- **Attempted a fix** for a confirmed BERT blind spot: blunt late-delivery complaints ("the shipment coming late") were classified Positive at 99.5% confidence. Continued fine-tuning on real + synthetic negative delay examples. **Correction (2026-08-18):** the originally reported "11.1% → 1.0%" false-positive-rate improvement was measured on the full train+val+test dataset — including the exact training rows the model had just been fit on — not a held-out set; a follow-up technical review caught this. Re-measured correctly on the test split only (94 genuinely-negative late/delay rows, small sample): 3.2% → 5.3%, not a statistically distinguishable change (95% CIs overlap heavily). Overall test-set f1_macro did improve slightly (0.9303 → 0.9325, no regression), so the checkpoint is not harmful, but the specific late-delivery blind spot is not demonstrably fixed by this augmentation — see `results/bert_late_delivery_augmentation_report.json` and `scripts/retrain_bert_late_delivery_augmented.py`.
 - Investigated a much larger negation-augmentation dataset for CNN2D (300K+ rows) — found it performed *worse* than the smaller, already-deployed fix; documented and did not apply, rather than ship a regression for the sake of "more data."
 
 ## 2026-08 — Persistence and UX

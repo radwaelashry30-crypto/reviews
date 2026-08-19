@@ -76,12 +76,12 @@ Stored verbatim in `results/notebook_reported_metrics.json`.
 
 | | BERT (n=6,297) | CNN2D (n=6,297) |
 |---|---|---|
-| Accuracy | 0.9344 | 0.9222 |
-| F1 (macro) | 0.9271 | 0.9159 |
-| ROC-AUC | 0.9755 | **0.9770** |
-| MCC | 0.8542 | 0.8370 |
+| Accuracy | **0.9370** | 0.9201 |
+| F1 (macro) | **0.9303** | 0.9127 |
+| ROC-AUC | **0.9797** | 0.9676 |
+| MCC | **0.8611** | 0.8276 |
 
-Both evaluated on the IDENTICAL corrected/deduplicated test split — see `results/reproduced_metrics.json`, `results/fair_model_comparison.json`.
+Both evaluated on the IDENTICAL corrected/deduplicated test split — see `results/reproduced_metrics.json`, `results/fair_model_comparison.json`. BERT wins on every metric here. Regenerate these numbers after any retraining with `cd backend && python scripts/regenerate_metrics.py` — never hand-edit this table; a previous version of it went stale relative to the shipped checkpoint (see `CHANGELOG.md`).
 
 ## 15. Leakage warning
 

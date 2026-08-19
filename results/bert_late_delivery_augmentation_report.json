@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-09T18:44:27.424834+00:00",
+  "generated_at": "2026-08-19T14:15:58.310245+00:00",
   "schema_version": "1.0",
   "augmentation": {
     "real_train_negatives_found": 263,
@@ -12,104 +12,119 @@
     "epochs": 1,
     "learning_rate": 1e-05,
     "batch_size": 16,
-    "train_time_seconds": 3251.5668058395386
+    "train_time_seconds": 231.36691164970398
   },
+  "baseline_checkpoint_sha256": "9d04eba6ac52dff2",
   "olist_test_metrics_new": {
-    "accuracy": 0.9369541051294267,
-    "precision_macro": 0.9263215033159757,
-    "recall_macro": 0.9348166753137565,
-    "f1_macro": 0.9303123822149276,
-    "roc_auc": 0.9796600398344354,
-    "pr_auc": 0.9884588505804244,
-    "mcc": 0.8610962749579519,
+    "accuracy": 0.9391773860568524,
+    "precision_macro": 0.9297510824435218,
+    "recall_macro": 0.9355800447546032,
+    "f1_macro": 0.9325488729254854,
+    "roc_auc": 0.9803170759785197,
+    "pr_auc": 0.9893402001449371,
+    "mcc": 0.865311494721036,
     "loss": null,
     "n_samples": 6297
   },
-  "late_delay_eval_metrics_new": {
-    "accuracy": 0.9199288256227758,
-    "precision_macro": 0.9371768582294898,
-    "recall_macro": 0.8743097238895559,
-    "f1_macro": 0.8983369713341613,
-    "roc_auc": 0.9632202881152461,
-    "pr_auc": 0.9477759420950644,
-    "mcc": 0.8090477095815396,
-    "loss": null,
-    "n_samples": 562
+  "late_delay_eval": {
+    "n_rows": 128,
+    "n_negatives": 94,
+    "fp_rate_before": {
+      "point": 0.031914893617021274,
+      "ci95": [
+        0.01091242972824407,
+        0.0896746416197306
+      ],
+      "n_fp": 3
+    },
+    "fp_rate_after": {
+      "point": 0.05319148936170213,
+      "ci95": [
+        0.02293141052501089,
+        0.11853806667078312
+      ],
+      "n_fp": 5
+    },
+    "measured_on": "split.test only (held out from training)"
   },
-  "late_delay_eval_size": 562,
-  "late_delay_false_positive_rate_new": 0.01020408163265306,
-  "hand_crafted_eval_accuracy": 1.0,
+  "hand_crafted_eval_accuracy": 0.9,
+  "hand_crafted_eval_held_out_verified": true,
   "hand_crafted_eval_details": [
     {
-      "text": "the shipment coming late",
+      "text": "It took forever to show up, way past the estimate.",
       "expected": 0,
       "predicted": 0,
-      "prob_positive": 0.0277,
+      "prob_positive": 0.1155,
       "correct": true
     },
     {
-      "text": "the delivery is late",
+      "text": "Still waiting after three weeks, this is unacceptable.",
       "expected": 0,
       "predicted": 0,
-      "prob_positive": 0.0241,
+      "prob_positive": 0.0165,
       "correct": true
     },
     {
-      "text": "Late delivery!",
+      "text": "My order hasn't turned up yet and no one can tell me why.",
       "expected": 0,
       "predicted": 0,
-      "prob_positive": 0.0169,
+      "prob_positive": 0.0341,
       "correct": true
     },
     {
-      "text": "shipment came late",
+      "text": "Ridiculous how long this took to reach me.",
       "expected": 0,
       "predicted": 0,
-      "prob_positive": 0.0325,
+      "prob_positive": 0.0262,
       "correct": true
     },
     {
-      "text": "delivery coming late",
+      "text": "Courier kept pushing the date back, very frustrating experience.",
       "expected": 0,
       "predicted": 0,
-      "prob_positive": 0.025,
+      "prob_positive": 0.0219,
       "correct": true
     },
     {
-      "text": "Delivery was too late, I was already cancelling.",
+      "text": "Three weeks behind schedule and support went silent.",
       "expected": 0,
-      "predicted": 0,
-      "prob_positive": 0.0226,
-      "correct": true
+      "predicted": 1,
+      "prob_positive": 0.993,
+      "correct": false
     },
     {
-      "text": "a bit late but worth the wait",
+      "text": "Took ages to arrive, but I'm genuinely happy with what I got.",
       "expected": 1,
       "predicted": 1,
-      "prob_positive": 0.9379,
+      "prob_positive": 0.9958,
       "correct": true
     },
     {
-      "text": "the delivery was late but the product is excellent",
+      "text": "Waited longer than expected, no complaints about the item itself though.",
       "expected": 1,
       "predicted": 1,
-      "prob_positive": 0.9776,
+      "prob_positive": 0.9612,
       "correct": true
     },
     {
-      "text": "the shipment arrived on time and works perfectly",
+      "text": "Everything showed up right on schedule and works great.",
       "expected": 1,
       "predicted": 1,
-      "prob_positive": 0.9977,
+      "prob_positive": 0.9983,
       "correct": true
     },
     {
-      "text": "Excellent product, arrived early.",
+      "text": "Super fast, exactly as promised, no issues at all.",
       "expected": 1,
       "predicted": 1,
       "prob_positive": 0.9983,
       "correct": true
     }
   ],
-  "applied": true
+  "regression_check": {
+    "baseline_f1_macro": 0.9303123822149276,
+    "regressed": false,
+    "tolerance": 0.002
+  },
+  "applied": false
 }

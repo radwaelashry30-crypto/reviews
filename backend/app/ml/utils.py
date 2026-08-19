@@ -46,6 +46,24 @@ def get_device(prefer_gpu: bool = True) -> "Any":
     return torch.device("cpu")
 
 
+def checkpoint_fingerprint(model_dir: Path) -> str | None:
+    """SHA-256 over a model directory's weight files, truncated to 16 hex
+    chars -- changes with any retraining. Used to detect when a published
+    results/*.json file describes a different checkpoint than the one
+    actually on disk (a real bug found in this project: metrics files went
+    stale after a retraining run overwrote the checkpoint without
+    regenerating them). Returns None if the directory has no recognized
+    weight files (e.g. not yet trained/exported)."""
+    model_dir = Path(model_dir)
+    weight_files = sorted(model_dir.glob("*.safetensors")) or sorted(model_dir.glob("pytorch_model.bin")) or sorted(model_dir.glob("*.pt"))
+    if not weight_files:
+        return None
+    h = hashlib.sha256()
+    for p in weight_files:
+        h.update(p.read_bytes())
+    return h.hexdigest()[:16]
+
+
 def optimize_dtypes(d: pd.DataFrame) -> tuple[pd.DataFrame, float, float]:
     """Downcast float64/int64 columns. Notebook cell 10, unchanged behavior."""
     before = d.memory_usage(deep=True).sum() / 1024**2

@@ -2,6 +2,14 @@
 
 Curated summary of major changes. Full commit history: `git log`.
 
+## 2026-08-19 — Fake-review detector replaced; production OOM/CORS fixes
+
+- **Replaced the fake-review detector** with a DistilBERT (paraphrase-consistency fine-tuned) + TF-IDF/Logistic-Regression ensemble, trained on the Ott et al. Deceptive Opinion Spam Corpus (genuinely human-verified deceptive-vs-truthful labels, not a proxy). Two prior checkpoints (an external model and a from-scratch retrain on a different dataset) had both failed a paraphrase-stability test the same way; the new ensemble passed it with statistical backing over the full held-out test split (0/300 confident flips, 95% CI upper bound 1.3%) rather than a handful of examples. A candidate dataset (Amazon "spam/non-spam", Kaggle) was inspected and rejected before training — its label turned out to be a 1:1 proxy for star rating, not a genuine judgment. Full investigation: `MODEL_COMPARISON_AUDIT.md` §9.
+- **Fixed a real production outage cause**: `_check_metrics_freshness()` (added in the security/reliability round below) read the full ~670MB BERT checkpoint into memory via `Path.read_bytes()` on every startup, regardless of `ENABLE_BERT`. On Render's 512MB free instance this alone exceeded the memory limit and silently killed every deploy since the check was added — the live site had been running a stale build for some time without anyone noticing, since `/health` still reported "healthy" from the old process. Fixed by hashing in 1MB chunks and skipping the check entirely when `ENABLE_BERT=false`.
+- **Fixed a real CORS gap**: `FRONTEND_ORIGINS` on the live Render service didn't match the actual deployed Vercel URL, so the public dashboard silently failed every API call with `NETWORK_ERROR` despite the backend itself being fully healthy.
+- Hardened `backend/Dockerfile` into a genuine multi-stage build (builder stage for pip/wheel-building, final stage copies only installed packages + source) and switched to the CPU-only PyTorch wheel (this app never touches a GPU in production) instead of the default CUDA-bundled one — verified via a GitHub Actions CI `docker` job (build + boot + real `/api/v1/health` check) before merging, not shipped straight to the live deployment unverified.
+- Added a GitHub Actions CI workflow (backend tests, frontend typecheck/test/build, Docker build+boot) after a 22-issue technical review; fixed the two real failures the first CI run caught (a Vite/Vitest version mismatch, and a `fastapi==0.119.1`+`pydantic==2.13.4` combination with a confirmed `UploadFile` bug).
+
 ## 2026-08-16 — Security and reliability audit round
 
 - **Fixed**: unbounded batch-upload file reads (memory-exhaustion risk on the 512MB deployment) — now capped at 5MB via bounded chunked reading before parsing.

@@ -257,18 +257,12 @@ body {
   padding: 1.35rem; box-shadow: var(--shadow-card);
 }
 .fake-check-verdict { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0.5rem 0 0.35rem; }
-/* Deliberately NOT colored red/green like a real verdict -- this signal was
-   confirmed to flip under pure synonym substitution (see fake_review_detection.py
-   module docstring), so a confident-looking color would misstate its reliability. */
-.fake-check-card.fake-check-exploratory { border-color: var(--border); }
-.fake-check-card.fake-check-exploratory .fake-check-verdict { color: var(--text-muted); font-size: 1rem; }
-
-/* Reliability signal from re-scoring the same review under a meaning-preserving
-   reword -- deliberately not a fake/real color, just flags whether THIS verdict held up. */
-.fake-check-stability { font-size: 0.85rem; font-weight: 600; margin-top: 0.4rem; }
-.fake-check-stability.stable { color: var(--text-muted); }
-.fake-check-stability.unstable { color: var(--accent-strong); }
-.fake-check-verdict-suppressed { color: var(--text-faint); font-style: italic; font-weight: 400; font-size: 0.9rem; }
+/* Ensemble trained + large-scale-validated (see MODEL_COMPARISON_AUDIT.md) --
+   a confident verdict color is warranted here, unlike the earlier checkpoints. */
+.fake-check-card.fake-check-validated { border-color: var(--border); }
+.fake-check-verdict.verdict-real { color: var(--positive, #2e7d5b); }
+.fake-check-verdict.verdict-fake { color: var(--accent-strong); }
+.fake-check-verdict-uncertain { color: var(--text-muted); font-style: italic; font-weight: 500; font-size: 1rem; }
 
 .aspects-list { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
 .aspect-row { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 0.6rem; font-size: 0.85rem; }

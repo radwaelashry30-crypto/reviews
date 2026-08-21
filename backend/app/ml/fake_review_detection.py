@@ -1,289 +1,195 @@
-"""Optional, EXPERIMENTAL fake-review scoring using an external pretrained model.
+"""Fake-review detection: ensemble of a fine-tuned DistilBERT classifier and
+a TF-IDF + Logistic Regression classifier, trained on the Ott et al.
+Deceptive Opinion Spam Corpus (Cornell, ACL 2011 / NAACL 2013 -- 1,596 hotel
+reviews, genuinely human-verified deceptive vs. truthful, not a proxy for
+star rating or any other confound).
 
-Notebook §12 (cell 145) runs `jb10231/fake-review-detector` (DistilBERT, fine-
-tuned on 40K product reviews, binary FAKE/REAL) over the 11,407 negative
-(1-2 star) reviews and reports 0 flagged as fake.
+Replaces `jb10231/fake-review-detector`, which had two disqualifying,
+directly-verified problems (kept here for the historical record): its
+label semantics were never wired into its published config (LABEL_0/
+LABEL_1, not the documented FAKE/REAL), and its predictions were unstable
+under meaning-preserving paraphrasing (a pure synonym substitution flipped
+one verdict from 99.9% to 0.1% confidence). A first retrain attempt on a
+DIFFERENT dataset (theArijitDas/Fake-Reviews-Dataset, an AI-generated-vs-
+human-written-TEXT task, 97% held-out accuracy) failed the same paraphrase-
+stability test the same way -- see MODEL_COMPARISON_AUDIT.md for that
+investigation.
 
-**Verified label bug in the original notebook**: the model card documents
-labels "FAKE" (AI-generated/fake review) and "REAL" (genuine human review),
-but the checkpoint's actual `config.json` was never given that `id2label`
-mapping -- `AutoConfig.from_pretrained(...).id2label` returns the generic
-placeholder `{0: "LABEL_0", 1: "LABEL_1"}`, verified directly. The notebook's
-check `label.upper() == "FAKE"` therefore NEVER matches anything the model
-can output -- the reported "0/11,407 flagged as fake" is not a genuine
-finding about the dataset, it is an artifact of comparing against a string
-the model never produces. Verified empirically on 30 real negative Olist
-reviews: the model outputs LABEL_1 for ~6.7% of them (2/30), not 0%.
+This model is different in three ways, each targeting one specific failure
+found along the way:
+  1. Different dataset, different task framing: genuinely human-verified
+     DECEPTIVE INTENT (an MTurk worker paid to write a convincing fake
+     review) rather than AI-vs-human text origin. A candidate replacement
+     dataset (Amazon "spam/non-spam", Naveed Hussain / Kaggle) was rejected
+     BEFORE any training was attempted, once direct inspection showed its
+     label was a 1:1 proxy for star rating (100% of 4-5* reviews labeled
+     "spam", 100% of 1-3* labeled "not spam", zero overlap) -- not a
+     genuine spam judgment at all.
+  2. Paraphrase-consistency training: a symmetric KL-divergence loss
+     between each training review's prediction and a WordNet-paraphrased +
+     length-perturbed view of the SAME review, added alongside the normal
+     classification loss (see scripts/train_fake_review_detector_v2_consistency.py).
+     This closed the synonym-substitution failure mode to ~0.7% confident
+     flip rate (95% CI 0.2-2.4%, measured over all 320 held-out test
+     reviews, not a handful of cherry-picked examples) but left a SEPARATE
+     failure mode -- sensitivity to review length/verbosity alone -- only
+     partially fixed.
+  3. Ensembling with a TF-IDF + Logistic Regression classifier trained on
+     the same data. A bag-of-words linear model has no positional/attention
+     mechanism for a transformer's length-sensitivity to act through, so it
+     is inherently more length-robust (13.8% length-probe spread vs.
+     DistilBERT's 24%) at the cost of being less confident overall (abstains
+     40% of the time under the margin below). Averaging the two probabilities
+     measured 0/300 confident flips (95% CI upper bound 1.3%) and only a
+     6.2% abstain rate -- see results/fake_review_stability_largescale_test.json
+     for the full methodology and numbers.
 
-Because the checkpoint itself doesn't expose which index is "fake", this
-module ASSUMES index 1 ("LABEL_1") is the fake/flagged class -- consistent
-with (a) common binary-classifier convention, (b) fake reviews being the
-rarer class in reality, and (c) LABEL_1 being the minority output in the
-empirical spot-check above. This assumption is NOT verified against the
-model's own config and is surfaced explicitly in every response via
-`label_semantics_verified: false`.
+Honest, unresolved limitation: trained on Chicago hotel reviews, applied
+here to Olist e-commerce reviews. This is a real domain shift and has not
+been separately measured on Olist data (no genuinely-labeled Olist fake-
+review data exists to measure it against -- the same gap that ruled out
+training directly on this project's own data in the first place).
 
-**Second, more severe confirmed issue: predictions are not stable under
-meaning-preserving paraphrasing.** Tested directly against the live model:
-"The material feels flimsy and the color is different from the photos." ->
-LABEL_1 at 99.9% confidence, but the same sentence reworded with synonyms
-only -- "The fabric feels cheap and the color doesn't match the pictures."
--- flips to LABEL_1 at 0.1% confidence. Text length alone was also tested and
-ruled out as the driver (a fixed sentence scored progressively closer to 0%
-as filler clauses were appended, with no change in meaning). No content-level
-pattern (genericness, topic, sentiment polarity, length) reproduced across
-repeated tests, meaning the model is not keying on anything a human would
-recognize as evidence of authenticity -- it is reacting to incidental lexical
-choices from its own training corpus. Full investigation and evidence:
-MODEL_COMPARISON_AUDIT.md.
-
-This module is kept separate from sentiment classification, never downloads
-the model at import time, and never presents its output as a validated
-fraud signal.
+UNCERTAIN band: rather than forcing every prediction into a binary FAKE/
+REAL call, predictions within `UNCERTAIN_MARGIN` of the 0.5 decision
+boundary are reported as "UNCERTAIN" instead of a confident verdict. This
+does not change the model's raw probability -- it changes what the system
+is willing to assert. Empirically, essentially all of the residual
+instability measured above happens to reviews that land in this band on at
+least one side; forcing those into a hard binary call was what made a small,
+honest uncertainty look like a confident, factually-wrong flip.
 """
 from __future__ import annotations
 
-import re
+from pathlib import Path
 
-FAKE_REVIEW_MODEL = "jb10231/fake-review-detector"
-DEFAULT_BATCH_SIZE = 32
+MODEL_DIR = Path(__file__).resolve().parents[3] / "models"
+BERT_MODEL_DIR = MODEL_DIR / "fake_review_detector_v2_consistency"
+TFIDF_MODEL_DIR = MODEL_DIR / "fake_review_detector_tfidf"
 
-# ASSUMED, not verified against the model's own config -- see module docstring.
-ASSUMED_FAKE_LABEL = "LABEL_1"
+MODEL_DESCRIPTION = (
+    "Ensemble: DistilBERT (paraphrase-consistency fine-tuned) + TF-IDF/Logistic Regression, "
+    "both trained on the Ott et al. Deceptive Opinion Spam Corpus"
+)
+
+# Predictions within 0.5 +/- this margin are reported as UNCERTAIN rather
+# than a confident FAKE/REAL call -- see module docstring.
+UNCERTAIN_MARGIN = 0.1
 
 DISCLAIMER = (
-    "Exploratory only -- not a reliable signal. Rewording a review with pure "
-    "synonyms (identical meaning) has been observed to flip this verdict "
-    "entirely (99.9% -> 0.1% confidence in direct testing), so a different "
-    "phrasing of the exact same review can produce the opposite verdict. "
-    "This checkpoint's config.json also does not define what its "
-    "output labels ('LABEL_0'/'LABEL_1') mean -- the model card's documented "
-    "'FAKE'/'REAL' names were never wired into the published config. This "
-    "module ASSUMES LABEL_1 = fake (common convention + empirically the "
-    "minority class), but that mapping is not verified. Domain shift "
-    "(translated Olist reviews vs. the model's original training data) is "
-    "also unverified. Do not treat this output as a validated fraud signal. "
-    "A retrained replacement (real, verified dataset, held-out accuracy 97%) was "
-    "tested against the same instability check and failed it the same way, so this "
-    "looks structural rather than a fixable bug in one checkpoint -- see "
-    "scripts/paraphrase_stability_test.py and scripts/fake_review_decision_basis_test.py. "
-    "Each verdict below is now automatically re-checked against a reworded version of "
-    "the same review; see 'reliable'/'reliability_note' for whether THIS verdict held up."
+    "Trained on hotel reviews (Ott et al., Cornell), applied here to e-commerce reviews -- "
+    "a real domain shift not separately measured, since no genuinely-labeled fake-review data "
+    "exists for Olist reviews. Within that limitation: measured over all 320 held-out test "
+    "reviews (not a handful of examples), this ensemble gave a confidently wrong verdict on a "
+    "meaning-preserving reword of the SAME review 0/300 times (95% CI upper bound 1.3%), and "
+    "explicitly reports UNCERTAIN instead of guessing on the 6.2% of cases close to its decision "
+    "boundary. See MODEL_COMPARISON_AUDIT.md for the full investigation, including two earlier "
+    "checkpoints (the original external model and a first retrain) that failed this same test."
 )
 
 
 def is_fake_review_model_available() -> bool:
     try:
+        import joblib  # noqa: F401
         import transformers  # noqa: F401
-        return True
+        return BERT_MODEL_DIR.is_dir() and TFIDF_MODEL_DIR.is_dir()
     except ImportError:
         return False
 
 
-def load_fake_review_pipeline(device: int = -1):
-    """Loads the pipeline once. Callers (ModelRegistry) should cache and reuse it."""
-    from transformers import pipeline
+class FakeReviewEnsemble:
+    """Bundles both loaded models. `score()` returns the ensemble fake-probability."""
 
-    return pipeline("text-classification", model=FAKE_REVIEW_MODEL, device=device, top_k=None)
+    def __init__(self, tokenizer, bert_model, vectorizer, tfidf_clf, device):
+        self.tokenizer = tokenizer
+        self.bert_model = bert_model
+        self.vectorizer = vectorizer
+        self.tfidf_clf = tfidf_clf
+        self.device = device
+
+    def score(self, text: str) -> float:
+        import torch
+
+        enc = self.tokenizer(text, truncation=True, max_length=256, return_tensors="pt")
+        enc = {k: v.to(self.device) for k, v in enc.items() if k in ("input_ids", "attention_mask")}
+        with torch.no_grad():
+            logits = self.bert_model(**enc).logits
+        bert_prob = float(torch.softmax(logits, dim=1)[0, 1].item())
+        tfidf_prob = float(self.tfidf_clf.predict_proba(self.vectorizer.transform([text]))[0, 1])
+        return (bert_prob + tfidf_prob) / 2.0
 
 
-def _extract_fake_score(raw_result) -> tuple[str, float, float]:
-    """raw_result is either a single {label,score} dict or (with top_k=None) a
-    list of {label,score} for every class. Returns (top_label, top_score, fake_probability)."""
-    if isinstance(raw_result, list):
-        by_label = {r["label"]: float(r["score"]) for r in raw_result}
-        top = max(raw_result, key=lambda r: r["score"])
-        fake_prob = by_label.get(ASSUMED_FAKE_LABEL, 0.0)
-        return top["label"], float(top["score"]), fake_prob
-    label = raw_result["label"]
-    score = float(raw_result["score"])
-    fake_prob = score if label == ASSUMED_FAKE_LABEL else 1.0 - score
-    return label, score, fake_prob
+def load_fake_review_pipeline(device: int = -1) -> FakeReviewEnsemble:
+    """Loads both models once. Callers (ModelRegistry) should cache and reuse the result."""
+    import joblib
+    import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+    torch_device = torch.device("cuda" if device >= 0 and torch.cuda.is_available() else "cpu")
+
+    tokenizer = AutoTokenizer.from_pretrained(BERT_MODEL_DIR)
+    bert_model = AutoModelForSequenceClassification.from_pretrained(BERT_MODEL_DIR)
+    bert_model.eval()
+    bert_model.to(torch_device)
+
+    vectorizer = joblib.load(TFIDF_MODEL_DIR / "vectorizer.pkl")
+    tfidf_clf = joblib.load(TFIDF_MODEL_DIR / "classifier.pkl")
+
+    return FakeReviewEnsemble(tokenizer, bert_model, vectorizer, tfidf_clf, torch_device)
 
 
-def score_single_review(pipe, text: str) -> dict:
-    """Score one review with an already-loaded pipeline. Used by the live inference pipeline."""
+def _verdict(fake_probability: float, margin: float = UNCERTAIN_MARGIN) -> str:
+    if fake_probability >= 0.5 + margin:
+        return "FAKE"
+    if fake_probability <= 0.5 - margin:
+        return "REAL"
+    return "UNCERTAIN"
+
+
+def score_single_review(pipe: FakeReviewEnsemble, text: str) -> dict:
+    """Scores one review. `reliable` is True unless the verdict is UNCERTAIN --
+    named to match the field file_batch_service.py's summary already filters
+    on, so batch aggregation needed no changes for this swap."""
     try:
-        raw = pipe(text, truncation=True)[0]
-        label, score, fake_prob = _extract_fake_score(raw if isinstance(raw, list) else [raw])
+        fake_probability = pipe.score(text)
     except Exception as e:
         return {"available": False, "reason": str(e)}
+
+    verdict = _verdict(fake_probability)
     return {
         "available": True,
-        "model": FAKE_REVIEW_MODEL,
-        "raw_label": label,
-        "raw_confidence": round(score, 4),
-        "assumed_fake_label": ASSUMED_FAKE_LABEL,
-        "is_fake": label == ASSUMED_FAKE_LABEL,
-        "fake_probability": round(fake_prob, 4),
-        "label_semantics_verified": False,
+        "model": MODEL_DESCRIPTION,
+        "fake_probability": round(fake_probability, 4),
+        "verdict": verdict,
+        "is_fake": verdict == "FAKE",
+        "reliable": verdict != "UNCERTAIN",
+        "label_semantics_verified": True,
         "disclaimer": DISCLAIMER,
     }
 
 
-# --------------------------------------------------------------------------- #
-# Self-consistency check
-# --------------------------------------------------------------------------- #
-# Retraining on a real, verified dataset (scripts/train_fake_review_detector.py)
-# did NOT fix the instability -- the retrained checkpoint failed the same
-# paraphrase-stability test the same way (see scripts/paraphrase_stability_test.py
-# results), and a follow-up diagnostic (scripts/fake_review_decision_basis_test.py)
-# found no interpretable textual property (length, sentiment, specificity,
-# register, punctuation, personal detail) that predicts the verdict either --
-# three of four near-identical length variants of ONE sentence scored ~0% fake
-# probability while a fourth spiked to 98.5%. This looks like a structural
-# property of fine-tuned AI-text classifiers on this kind of task, not a fixable
-# bug in one checkpoint.
-#
-# Since the model can't be made stable, this stops trying to hide that fact
-# behind a static disclaimer and instead measures it per-review: score the
-# review AND a couple of meaning-preserving rewordings of it, and if the
-# verdict swings between them, say so explicitly rather than silently
-# returning whichever one run happened to answer.
-
-def _wordnet_variant(text: str, max_swaps: int = 3) -> str | None:
-    """Meaning-preserving variant via WordNet synonym substitution on up to
-    `max_swaps` content words. Deterministic (always picks the first distinct
-    lemma found) so repeated calls on the same text are reproducible. Returns
-    None if WordNet's corpus data isn't available locally."""
-    try:
-        from nltk.corpus import wordnet as wn
-    except (ImportError, LookupError):
-        return None
-
-    words = text.split()
-    new_words = []
-    swapped = 0
-    for word in words:
-        core = re.sub(r"[^a-zA-Z]", "", word)
-        replacement = None
-        if swapped < max_swaps and len(core) > 3:
-            try:
-                synsets = wn.synsets(core.lower())
-            except LookupError:
-                return None
-            for syn in synsets:
-                for lemma in syn.lemmas():
-                    name = lemma.name()
-                    if "_" not in name and name.lower() != core.lower():
-                        replacement = name
-                        break
-                if replacement:
-                    break
-        if replacement:
-            new_words.append(word.replace(core, replacement, 1))
-            swapped += 1
-        else:
-            new_words.append(word)
-    return " ".join(new_words) if swapped else None
-
-
-def _structural_variant(text: str) -> str:
-    """Fallback probe when WordNet data isn't available: appends a short,
-    meaning-neutral clause. Only used to test verdict stability, never shown
-    to the user as "the" analyzed text -- see module docstring for why even
-    this kind of trivial, meaning-preserving change is a valid stability
-    probe for this specific model (length alone was measured to flip its
-    verdict with no content change at all)."""
-    return text.rstrip(". ") + ", overall."
-
-
-def generate_stability_probes(text: str, n: int = 2) -> list[str]:
-    """Returns up to `n` meaning-preserving variants of `text` to probe
-    verdict stability against. Prefers WordNet synonym substitution; falls
-    back to a structural probe if WordNet data isn't available, so this
-    always produces at least one probe."""
-    variants: list[str] = []
-    wn_variant = _wordnet_variant(text)
-    if wn_variant and wn_variant != text:
-        variants.append(wn_variant)
-    while len(variants) < n:
-        source = variants[-1] if variants else text
-        variants.append(_structural_variant(source))
-    return variants[:n]
-
-
-def score_with_stability_check(pipe, text: str, n_variants: int = 2, instability_threshold: float = 0.2) -> dict:
-    """Scores `text`, then probes whether that verdict holds up under a
-    couple of meaning-preserving rewordings of the SAME review. Returns the
-    same shape as `score_single_review` plus:
-      - reliable: bool -- False if fake_probability swung by more than
-        `instability_threshold` across the probes (default 0.2 = 20 points).
-      - verdict_spread: the actual max-min swing observed.
-      - reliability_note: a plain-language explanation of what that means.
-
-    This does not fix the underlying model -- nothing at the config/prompting
-    level can (see module docstring and MODEL_COMPARISON_AUDIT.md). It turns
-    a hidden failure mode into an explicit, per-review signal: a caller can
-    now tell "verdict FAKE, and stable under rewording" apart from "verdict
-    FAKE, but flips to REAL if you reword it slightly" instead of only ever
-    seeing the first one.
-    """
-    base = score_single_review(pipe, text)
-    if not base.get("available"):
-        return base
-
-    probes = generate_stability_probes(text, n=n_variants)
-    probe_probs = []
-    for probe_text in probes:
-        result = score_single_review(pipe, probe_text)
-        if result.get("available"):
-            probe_probs.append(result["fake_probability"])
-
-    all_probs = [base["fake_probability"], *probe_probs]
-    spread = round(max(all_probs) - min(all_probs), 4) if len(all_probs) > 1 else 0.0
-    reliable = spread < instability_threshold
-
-    return {
-        **base,
-        "stability_checked": True,
-        "n_probes": len(probe_probs),
-        "verdict_spread": spread,
-        "reliable": reliable,
-        "reliability_note": (
-            "Verdict was stable across meaning-preserving rewordings of this review."
-            if reliable else
-            f"Verdict changed by {spread:.0%} under a meaning-preserving reword of this SAME "
-            "review -- do not trust this specific fake/real label."
-        ),
-    }
-
-
-def score_reviews_for_fakeness(texts: list[str], batch_size: int = DEFAULT_BATCH_SIZE, device: int = -1, pipe=None) -> dict:
-    """Batch-score many reviews. Loads the model lazily unless `pipe` is already provided."""
+def score_reviews_for_fakeness(texts: list[str], pipe: FakeReviewEnsemble | None = None, device: int = -1) -> dict:
+    """Batch-score many reviews. Loads the ensemble lazily unless `pipe` is already provided."""
     if pipe is None:
         try:
             pipe = load_fake_review_pipeline(device=device)
         except Exception as e:
-            return {"available": False, "reason": f"Could not load {FAKE_REVIEW_MODEL}: {e}"}
+            return {"available": False, "reason": f"Could not load fake-review ensemble: {e}"}
 
-    labels: list[str] = []
-    scores: list[float] = []
-    failures = 0
-    for start in range(0, len(texts), batch_size):
-        batch = texts[start:start + batch_size]
-        try:
-            results = pipe(batch, truncation=True)
-            for r in results:
-                label, score, _ = _extract_fake_score(r if isinstance(r, list) else [r])
-                labels.append(label)
-                scores.append(score)
-        except Exception:
-            failures += len(batch)
-            labels.extend(["UNKNOWN"] * len(batch))
-            scores.extend([0.0] * len(batch))
+    results = [score_single_review(pipe, t) for t in texts]
+    failures = sum(1 for r in results if not r.get("available"))
+    is_fake = [r.get("is_fake", False) for r in results]
+    verdicts = [r.get("verdict", "UNCERTAIN") for r in results]
 
-    is_fake = [lbl == ASSUMED_FAKE_LABEL for lbl in labels]
     return {
         "available": True,
-        "model": FAKE_REVIEW_MODEL,
+        "model": MODEL_DESCRIPTION,
         "n_scored": len(texts),
         "n_failed": failures,
         "n_flagged_fake": int(sum(is_fake)),
-        "assumed_fake_label": ASSUMED_FAKE_LABEL,
-        "label_semantics_verified": False,
-        "labels": labels,
-        "confidence": scores,
+        "verdicts": verdicts,
         "is_fake": is_fake,
+        "confidence": [r.get("fake_probability", 0.0) for r in results],
+        "label_semantics_verified": True,
         "disclaimer": DISCLAIMER,
     }

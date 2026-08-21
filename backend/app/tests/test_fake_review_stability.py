@@ -1,76 +1,88 @@
-"""Tests for the self-consistency check in app/ml/fake_review_detection.py.
-
-Uses a fake pipeline callable so the reliable/unreliable branches are tested
-deterministically and fast, without needing the real (optional,
-download-gated) model. See fake_review_decision_basis_test.py for the live
-evidence this check exists to surface, not hide."""
-import pytest
-
-from app.ml.fake_review_detection import generate_stability_probes, score_with_stability_check
+"""Tests for app/ml/fake_review_detection.py's verdict logic (REAL / UNCERTAIN
+/ FAKE) and batch aggregation. Uses a fake ensemble object (returning a fixed
+score()) so these are deterministic and fast, without needing the real
+(257MB DistilBERT + TF-IDF) models. See MODEL_COMPARISON_AUDIT.md and
+results/fake_review_stability_largescale_test.json for the live evidence
+behind the UNCERTAIN-margin design (all measured on the real models)."""
+from app.ml.fake_review_detection import UNCERTAIN_MARGIN, score_reviews_for_fakeness, score_single_review
 
 
-def _label_pair(p: float):
-    """Matches the real pipeline's top_k=None output shape: pipe(text)
-    returns a batch-wrapped list, and score_single_review takes [0] of it."""
-    return [[{"label": "LABEL_0", "score": 1 - p}, {"label": "LABEL_1", "score": p}]]
+class _FakeEnsemble:
+    """Returns a fixed fake-probability regardless of input text."""
+
+    def __init__(self, probability: float):
+        self.probability = probability
+
+    def score(self, text: str) -> float:
+        return self.probability
 
 
-def _pipe_returning(probability_fake: float):
-    """Fake pipeline: every call (base text or any probe) returns the same
-    fixed fake-probability, regardless of input text."""
-    def pipe(text, truncation=True):
-        return _label_pair(probability_fake)
-    return pipe
-
-
-def _pipe_cycling(*probabilities: float):
-    """Fake pipeline: returns each probability in sequence across successive
-    calls (base call first, then each probe), to simulate an unstable model."""
-    values = iter(probabilities)
-
-    def pipe(text, truncation=True):
-        return _label_pair(next(values))
-    return pipe
-
-
-def test_generate_stability_probes_returns_requested_count():
-    probes = generate_stability_probes("The product broke after two days.", n=2)
-    assert len(probes) == 2
-    assert all(isinstance(p, str) and p for p in probes)
-
-
-def test_generate_stability_probes_preserve_rough_meaning():
-    """Probes should still resemble the original text (this is a reword
-    check, not a random-text generator)."""
-    text = "The delivery was late and the box was damaged."
-    probes = generate_stability_probes(text, n=2)
-    for probe in probes:
-        assert len(probe) >= len(text) * 0.6
-
-
-def test_score_with_stability_check_marks_reliable_when_consistent():
-    pipe = _pipe_returning(0.95)  # every call, base and probes alike, agrees
-    result = score_with_stability_check(pipe, "Great product, very happy with it.")
-    assert result["available"] is True
-    assert result["stability_checked"] is True
-    assert result["reliable"] is True
-    assert result["verdict_spread"] < 0.2
-
-
-def test_score_with_stability_check_marks_unreliable_when_verdict_swings():
-    # base=0.99 (confidently "fake"), first probe=0.01 (confidently "real") -- exactly
-    # the kind of flip observed against the real model (see MODEL_COMPARISON_AUDIT.md).
-    pipe = _pipe_cycling(0.99, 0.01, 0.99)
-    result = score_with_stability_check(pipe, "The material feels flimsy and cheap.", n_variants=2)
-    assert result["available"] is True
-    assert result["reliable"] is False
-    assert result["verdict_spread"] >= 0.2
-    assert "do not trust" in result["reliability_note"].lower()
-
-
-def test_score_with_stability_check_propagates_unavailable():
-    def broken_pipe(text, truncation=True):
+class _BrokenEnsemble:
+    def score(self, text: str) -> float:
         raise RuntimeError("model not loaded")
 
-    result = score_with_stability_check(broken_pipe, "Some review text.")
+
+def test_score_single_review_confident_fake():
+    pipe = _FakeEnsemble(0.5 + UNCERTAIN_MARGIN + 0.05)
+    result = score_single_review(pipe, "Great product, very happy with it.")
+    assert result["available"] is True
+    assert result["verdict"] == "FAKE"
+    assert result["is_fake"] is True
+    assert result["reliable"] is True
+
+
+def test_score_single_review_confident_real():
+    pipe = _FakeEnsemble(0.5 - UNCERTAIN_MARGIN - 0.05)
+    result = score_single_review(pipe, "The material feels flimsy and cheap.")
+    assert result["available"] is True
+    assert result["verdict"] == "REAL"
+    assert result["is_fake"] is False
+    assert result["reliable"] is True
+
+
+def test_score_single_review_uncertain_band_is_not_confident():
+    """Right at 0.5 -- squarely inside the UNCERTAIN margin -- must not be
+    reported as a confident FAKE or REAL call."""
+    pipe = _FakeEnsemble(0.5)
+    result = score_single_review(pipe, "It's an okay product I guess.")
+    assert result["available"] is True
+    assert result["verdict"] == "UNCERTAIN"
+    assert result["is_fake"] is False
+    assert result["reliable"] is False
+
+
+def test_score_single_review_boundary_is_confident_not_uncertain():
+    """Exactly at the edge of the margin (0.5 + margin) should count as
+    confident, not uncertain -- the band is (0.5-margin, 0.5+margin) exclusive
+    of its own edges being folded into UNCERTAIN."""
+    pipe = _FakeEnsemble(0.5 + UNCERTAIN_MARGIN)
+    result = score_single_review(pipe, "Some review text.")
+    assert result["verdict"] == "FAKE"
+
+
+def test_score_single_review_propagates_unavailable():
+    result = score_single_review(_BrokenEnsemble(), "Some review text.")
     assert result["available"] is False
+
+
+def test_score_reviews_for_fakeness_aggregates_verdicts():
+    pipe = _FakeEnsemble(0.5 + UNCERTAIN_MARGIN + 0.1)
+    result = score_reviews_for_fakeness(["a", "b", "c"], pipe=pipe)
+    assert result["available"] is True
+    assert result["n_scored"] == 3
+    assert result["n_flagged_fake"] == 3
+    assert result["verdicts"] == ["FAKE", "FAKE", "FAKE"]
+
+
+def test_score_reviews_for_fakeness_mixed_verdicts():
+    class _CyclingEnsemble:
+        def __init__(self, probs):
+            self._probs = iter(probs)
+
+        def score(self, text: str) -> float:
+            return next(self._probs)
+
+    pipe = _CyclingEnsemble([0.9, 0.1, 0.5])
+    result = score_reviews_for_fakeness(["a", "b", "c"], pipe=pipe)
+    assert result["verdicts"] == ["FAKE", "REAL", "UNCERTAIN"]
+    assert result["n_flagged_fake"] == 1

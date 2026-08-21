@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-08-21T17:55:54.085251+00:00",
+  "schema_version": "1.0",
+  "approach": "TF-IDF (1-2 grams, 8000 features) + Logistic Regression (class_weight=balanced)",
+  "dataset": "Ott et al. Deceptive Opinion Spam Corpus (Cornell, ACL 2011 / NAACL 2013)",
+  "dataset_size": 1596,
+  "split_sizes": {
+    "train_plus_val": 1276,
+    "test": 320
+  },
+  "test_metrics": {
+    "accuracy": 0.9125,
+    "accuracy_95ci": [
+      0.8764442331897573,
+      0.9387691303805807
+    ],
+    "precision": 0.9230769230769231,
+    "recall": 0.9,
+    "f1": 0.9113924050632911,
+    "roc_auc": 0.96640625,
+    "n_test": 320
+  },
+  "confusion_matrix": [
+    [
+      147,
+      13
+    ],
+    [
+      18,
+      142
+    ]
+  ],
+  "stability_test": {
+    "mean_diff": 0.04377042826701342,
+    "max_diff": 0.08502051561255419,
+    "flips": 2,
+    "n_pairs": 6,
+    "length_spread": 0.1383844015281468,
+    "passed": false
+  },
+  "sklearn_version_used": "1.5.2",
+  "domain_shift_caveat": "Trained on hotel reviews (Chicago hotels); applied in this app to Olist e-commerce reviews. Not the same domain.",
+  "seed": 42
+}

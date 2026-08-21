@@ -196,15 +196,15 @@ class ModelRegistry:
 
     # -- lazy-loaded optional/experimental models (Task 2, Task 3) ------
     def get_fake_review_pipeline(self):
-        """Loads jb10231/fake-review-detector on first call, then reuses it.
-        Returns None (never raises) if the module is disabled or loading
-        fails -- callers degrade to an 'unavailable' response, never a crash.
+        """Loads the DistilBERT+TF-IDF fake-review ensemble on first call,
+        then reuses it. Returns None (never raises) if the module is
+        disabled or loading fails -- callers degrade to an 'unavailable'
+        response, never a crash.
 
-        Gated on its own dedicated flag (not ALLOW_EXTERNAL_MODEL_DOWNLOADS)
-        because this module has a documented structural reliability problem
-        that plain "haven't verified label semantics yet" caveats on other
-        experimental models don't have -- see ENABLE_FAKE_REVIEW_MODULE's
-        docstring in app/core/config.py."""
+        Gated on its own dedicated flag (not ALLOW_EXTERNAL_MODEL_DOWNLOADS):
+        the DistilBERT component alone is ~257MB on disk, a real memory cost
+        on a 512MB deployment -- see ENABLE_FAKE_REVIEW_MODULE's docstring in
+        app/core/config.py."""
         if not settings.ENABLE_FAKE_REVIEW_MODULE:
             self.statuses["fake_review"] = ArtifactStatus("fake_review", "unavailable", None, "ENABLE_FAKE_REVIEW_MODULE=false")
             return None

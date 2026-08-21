@@ -15,31 +15,21 @@ export function FakeCheckBadge({ result }: { result: FakeCheckResult | null }) {
     );
   }
 
-  // A verdict that flipped under meaning-preserving rewording is not
-  // evidence of anything -- don't present it with the same weight as a
-  // stable one. This is the actual enforcement of `reliable`, not just a
-  // caption next to an unconditionally-shown verdict.
-  const isUnreliable = result.stability_checked && result.reliable === false;
+  const isUncertain = result.verdict === "UNCERTAIN";
 
   return (
-    <div className="fake-check-card fake-check-exploratory">
-      <span className="eyebrow">Task 2 · Authenticity check (exploratory, unreliable)</span>
-      {isUnreliable ? (
-        <div className="fake-check-verdict fake-check-verdict-suppressed">
-          Verdict withheld -- flipped under meaning-preserving rewording of this same review, so it isn't a usable signal.
+    <div className="fake-check-card fake-check-validated">
+      <span className="eyebrow">Task 2 · Authenticity check</span>
+      {isUncertain ? (
+        <div className="fake-check-verdict fake-check-verdict-uncertain">
+          Uncertain -- this review's score is close to the model's decision boundary, so no confident verdict is given.
         </div>
       ) : (
-        <div className="fake-check-verdict">
-          {result.is_fake ? "Model output: LABEL_1 (assumed “fake”)" : "Model output: LABEL_0 (assumed “real”)"}
+        <div className={`fake-check-verdict ${result.is_fake ? "verdict-fake" : "verdict-real"}`}>
+          {result.is_fake ? "Likely deceptive" : "Likely genuine"}
+          {typeof result.fake_probability === "number" && ` (${(result.fake_probability * 100).toFixed(0)}% fake-probability)`}
         </div>
       )}
-      {result.stability_checked && (
-        <div className={`fake-check-stability ${result.reliable ? "stable" : "unstable"}`}>
-          {result.reliable ? "✓ Stable under rewording" : "⚠ Unstable under rewording"}
-          {typeof result.verdict_spread === "number" && ` (spread: ${(result.verdict_spread * 100).toFixed(0)}%)`}
-        </div>
-      )}
-      {result.reliability_note && <p className="limitations-note">{result.reliability_note}</p>}
       <p className="limitations-note">{result.disclaimer}</p>
     </div>
   );

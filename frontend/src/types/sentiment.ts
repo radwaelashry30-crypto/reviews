@@ -59,18 +59,14 @@ export interface FakeCheckResult {
   available: boolean;
   reason?: string;
   model?: string;
-  raw_label?: string;
-  raw_confidence?: number;
   is_fake?: boolean;
   fake_probability?: number;
+  /** "FAKE" / "REAL" / "UNCERTAIN" -- UNCERTAIN when fake_probability lands within the model's own margin of its 0.5 decision boundary, rather than forcing a confident guess. */
+  verdict?: "FAKE" | "REAL" | "UNCERTAIN";
   label_semantics_verified?: boolean;
   disclaimer?: string;
-  /** True if the fake/real verdict held up under meaning-preserving rewordings of the same review. */
-  stability_checked?: boolean;
-  n_probes?: number;
-  verdict_spread?: number;
+  /** False only when verdict is UNCERTAIN. */
   reliable?: boolean;
-  reliability_note?: string;
 }
 
 export interface AspectResult {

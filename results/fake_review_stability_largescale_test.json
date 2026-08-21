@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-08-21T18:35:34.269894+00:00",
+  "schema_version": "1.0",
+  "n_test_reviews": 320,
+  "n_pairs_evaluated": 320,
+  "margin": 0.1,
+  "models": {
+    "distilbert_consistency_v4": {
+      "n_pairs": 320,
+      "mean_diff": 0.01704790687363129,
+      "max_diff": 0.338995099067688,
+      "raw_flip_rate": 0.01875,
+      "raw_flip_95ci": [
+        0.008620805569639546,
+        0.04029693693163267
+      ],
+      "abstain_rate": 0.04375,
+      "confident_flip_count": 2,
+      "n_both_confident": 306,
+      "confident_flip_rate": 0.006535947712418301,
+      "confident_flip_95ci": [
+        0.0017941887691966067,
+        0.02351422688577032
+      ]
+    },
+    "tfidf_logreg": {
+      "n_pairs": 320,
+      "mean_diff": 0.038449699232910174,
+      "max_diff": 0.20017501742335386,
+      "raw_flip_rate": 0.059375,
+      "raw_flip_95ci": [
+        0.03833710937566087,
+        0.09086679771965979
+      ],
+      "abstain_rate": 0.4125,
+      "confident_flip_count": 0,
+      "n_both_confident": 188,
+      "confident_flip_rate": 0.0,
+      "confident_flip_95ci": [
+        1.6999858919214589e-18,
+        0.020024853837749473
+      ]
+    },
+    "ensemble": {
+      "n_pairs": 320,
+      "mean_diff": 0.02563765289311067,
+      "max_diff": 0.18456983830857016,
+      "raw_flip_rate": 0.0125,
+      "raw_flip_95ci": [
+        0.004871372962806259,
+        0.031694651908612356
+      ],
+      "abstain_rate": 0.0625,
+      "confident_flip_count": 0,
+      "n_both_confident": 300,
+      "confident_flip_rate": 0.0,
+      "confident_flip_95ci": [
+        0.0,
+        0.012643429997735661
+      ]
+    }
+  }
+}

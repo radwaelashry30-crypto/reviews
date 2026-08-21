@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-08-21T17:58:45.727034+00:00",
+  "schema_version": "1.0",
+  "approach": "Mean of DistilBERT+consistency-training probability and TF-IDF+LogisticRegression probability",
+  "components": [
+    "models\\fake_review_detector_v2_consistency",
+    "models\\fake_review_detector_tfidf"
+  ],
+  "test_metrics": {
+    "accuracy": 0.915625,
+    "accuracy_95ci": [
+      0.8800227464195618,
+      0.9413664759657031
+    ],
+    "precision": 0.9235668789808917,
+    "recall": 0.90625,
+    "f1": 0.9148264984227129,
+    "roc_auc": 0.9759765625000001,
+    "n_test": 320
+  },
+  "confusion_matrix": [
+    [
+      148,
+      12
+    ],
+    [
+      15,
+      145
+    ]
+  ],
+  "stability_test": {
+    "mean_diff": 0.05404006401843167,
+    "max_diff": 0.13884249828181194,
+    "flips": 2,
+    "n_pairs": 6,
+    "length_spread": 0.1684708739351526,
+    "passed": false
+  }
+}

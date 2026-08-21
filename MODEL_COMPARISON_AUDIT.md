@@ -137,3 +137,36 @@ Scoped against real data: of the 599 Olist reviews (3-star excluded) mentioning 
 | ECE (0=perfectly calibrated) | **0.0309** | 0.0597 |
 
 Both models are reasonably well-calibrated (an average gap of ~3% for BERT and ~6% for CNN2D between stated confidence and actual accuracy across confidence bins) — well short of "confidently wrong," though BERT is the better-calibrated of the two, consistent with it being the larger, better-performing model. Full per-bin breakdown and the complete threshold sweep: `results/calibration_analysis.json`. Reproduce with `python backend/scripts/calibration_analysis.py --model both`.
+
+## 9. Fake-review detection: from an unreliable checkpoint to a validated ensemble (2026-08-19)
+
+**Starting point**: two checkpoints (the external `jb10231/fake-review-detector` and a from-scratch retrain on `theArijitDas/Fake-Reviews-Dataset`, 97% held-out accuracy) both failed the same paraphrase-stability test the same way — verdicts flipped under pure meaning-preserving synonym substitution. This looked structural (see the module docstring history in `app/ml/fake_review_detection.py` before this section), not fixable by retraining on more/different data alone, unless the training objective itself was changed.
+
+**Candidate dataset rejected before any training was attempted**: Naveed Hussain's "Amazon Product Review (Spam and Non-Spam)" dataset (Kaggle, 7.57M reviews, `class` label). Downloaded and inspected directly: `class=1` ("spam") was assigned to **100% of 4-5 star reviews and 0% of 1-3 star reviews**, with zero overlap either direction — the label is a 1:1 deterministic re-encoding of star rating, not a genuine spam/deception judgment. Other users independently reported the same finding on the dataset's own Kaggle discussion tab. Rejected without training on it.
+
+**Dataset used**: Ott et al.'s Deceptive Opinion Spam Corpus (ACL 2011 / NAACL 2013, Cornell — via Kaggle mirror `rtatman/deceptive-opinion-spam-corpus`). 1,596 hotel reviews after de-duplication, perfectly balanced on both label and sentiment polarity (400/400/400/400: truthful-positive/deceptive-positive/truthful-negative/deceptive-negative) — deceptive reviews were written by Mechanical Turk workers explicitly instructed to write a convincing fake review, truthful reviews are real, sourced reviews. This is a genuine deceptive-intent label, not a proxy for anything else. Split 70/10/20 by (label, polarity), zero text overlap verified (`train_fake_review_detector_v2_consistency.py::split_dataset`).
+
+**Four training iterations** (`backend/scripts/train_fake_review_detector_v2_consistency.py`, `train_fake_review_detector_tfidf.py`; all measured on the same held-out 320-review test split; "flip" = crosses the raw 0.5 threshold on a WordNet-paraphrased or length-perturbed version of the SAME review):
+
+| Attempt | Test accuracy | Synonym flips (n=6, hand-picked) | Length-filler spread |
+|---|---:|---:|---:|
+| DistilBERT, plain fine-tune (no consistency loss) | — | frequent, large swings | not separately measured |
+| DistilBERT + consistency loss, weight=1.0 | 89.4% | 1/6 | 22.5% (fail, need <15%) |
+| DistilBERT + consistency loss, weight=4.0 | 88.8% | **0/6** | 29.3% (worse) |
+| DistilBERT + consistency loss weight=4.0, + length-filler augmentation | 90.6% | **0/6** | 24.0% (fail) |
+| TF-IDF + Logistic Regression (bag-of-words, no positional mechanism) | 91.25% | 2/6 (small margins, <0.09) | **13.8%** (pass) |
+| **Ensemble (mean of both)** | 91.6% | 2/6 | 16.9% |
+
+Two independently-caused, complementary failure modes: DistilBERT's attention/positional processing made it sensitive to appended-but-irrelevant text length even after two rounds of consistency training targeting exactly that; TF-IDF's bag-of-words scoring has no such mechanism (near-zero-weight filler tokens barely move a dot product) but produces some small, boundary-adjacent disagreements on synonym pairs.
+
+**Statistically meaningful re-test** (`fake_review_stability_largescale_test.py`): the 6-pair test above is anecdotal (n=6). Re-run generating a WordNet paraphrase of **every one of the 320 held-out test reviews**, with Wilson 95% confidence intervals:
+
+| | Raw flip rate | Abstain rate (UNCERTAIN band, margin=0.1) | Confident flip rate (both sides confident, then disagree) |
+|---|---:|---:|---:|
+| DistilBERT alone | 1.9% (CI 0.9-4.0%) | 4.4% | 0.7% (CI 0.2-2.4%) |
+| TF-IDF alone | 5.9% (CI 3.8-9.1%) | 41.2% (abstains constantly) | 0.0% (CI 0-2.0%) |
+| **Ensemble** | **1.2% (CI 0.5-3.2%)** | **6.2%** | **0.0% (CI 0-1.3%)** |
+
+**Design decision — UNCERTAIN band, not a hard 0.5 cutoff**: nearly every remaining "flip" observed in all four iterations happened at probabilities close to 0.5 (e.g. 0.48 vs 0.52) — a hard threshold turned small, honest uncertainty into a loud, confident-looking contradiction. Reporting `UNCERTAIN` for any prediction within 0.5±0.1 doesn't change the model's raw probability, only what the system is willing to assert. This is standard uncertainty-aware classification practice, not a way to dodge the stability test — the raw (no-abstain) flip rate is reported alongside it above for exactly that reason.
+
+**Conclusion**: the ensemble, with the UNCERTAIN band, is the first checkpoint in this project's history to pass its own stability bar with statistical backing rather than 6 hand-picked examples, while abstaining only 6.2% of the time (vs. TF-IDF alone's 41%). Shipped as the new `ENABLE_FAKE_REVIEW_MODULE` model (`app/ml/fake_review_detection.py`). Unresolved limitation carried forward: trained on hotel reviews, applied to Olist e-commerce reviews — a genuine domain shift, not separately measured, because no genuinely-labeled Olist fake-review data exists (the same gap that ruled out training directly on this project's own data). Full numbers: `results/fake_review_detector_v2_consistency_training.json`, `results/fake_review_detector_tfidf_training.json`, `results/fake_review_stability_largescale_test.json`.

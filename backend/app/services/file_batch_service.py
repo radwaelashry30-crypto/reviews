@@ -184,10 +184,10 @@ def _build_fake_review_summary(pipeline_results: list[dict]) -> dict:
         return {"available": False, "reason": screened[0].get("reason", "fake-review model not available on this deployment")}
 
     n_screened = len(available)
-    # A verdict that flipped under a meaning-preserving reword of the SAME
-    # review (see score_with_stability_check) isn't evidence of anything --
-    # counting it into "% flagged fake" the same as a stable verdict would
-    # silently discard exactly the caveat that field exists to surface.
+    # "reliable" is True unless the verdict landed in the model's own
+    # UNCERTAIN band (see fake_review_detection.py's _verdict) -- excluding
+    # those from flagged_pct means an honestly-uncertain call doesn't get
+    # silently counted as a confident one.
     reliable = [f for f in available if f.get("reliable", True)]
     n_unreliable = n_screened - len(reliable)
     n_flagged = sum(1 for f in reliable if f.get("is_fake"))
@@ -200,12 +200,13 @@ def _build_fake_review_summary(pipeline_results: list[dict]) -> dict:
         "n_flagged_fake": n_flagged,
         "flagged_pct": round(n_flagged / n_reliable * 100, 2) if n_reliable else 0.0,
         "methodology_note": (
-            "Exploratory fake-review screening, over the negative reviews within the "
-            f"analyzed sample (up to {ADVANCED_SAMPLE_SIZE} rows of this file, not the full "
-            "upload). Label semantics are not verified against the model's own config -- "
-            "treat as directional, not a validated fraud signal. "
-            f"{n_unreliable} of {n_screened} screened rows had a verdict that flipped under "
-            "meaning-preserving rewording and were excluded from flagged_pct as unreliable."
+            "Fake-review screening over the negative reviews within the analyzed sample "
+            f"(up to {ADVANCED_SAMPLE_SIZE} rows of this file, not the full upload), using an "
+            "ensemble trained on a genuinely human-verified deceptive-review corpus (Ott et al., "
+            "hotel domain -- a real domain shift from Olist e-commerce, not separately measured). "
+            f"{n_unreliable} of {n_screened} screened rows landed in the model's own UNCERTAIN "
+            "band and were excluded from flagged_pct rather than forced into a confident guess. "
+            "See MODEL_COMPARISON_AUDIT.md for the full validation methodology."
         ),
     }
 

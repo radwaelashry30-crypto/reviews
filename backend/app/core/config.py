@@ -52,11 +52,14 @@ class Settings(BaseSettings):
     ENABLE_TRANSLATION: bool = False
     ALLOW_EXTERNAL_MODEL_DOWNLOADS: bool = False
     # Separate from ALLOW_EXTERNAL_MODEL_DOWNLOADS (which also gates ABSA) so
-    # enabling ABSA doesn't silently also expose this specific module: its
-    # own module docstring documents a structural, unfixed reliability
-    # problem (verdicts flip under meaning-preserving paraphrasing, confirmed
-    # on two independently trained checkpoints). Off by default -- see
-    # Technical Review #09.
+    # enabling ABSA doesn't silently also expose this specific module. As of
+    # the DistilBERT+TF-IDF ensemble (see app/ml/fake_review_detection.py),
+    # this is no longer off for reliability reasons -- large-scale testing
+    # measured a 0.4% confident-wrong-verdict rate under paraphrasing. It's
+    # off by default because the DistilBERT component alone is ~257MB on
+    # disk, a real memory risk on Render's 512MB free tier stacked on top of
+    # CNN2D + the rest of the app -- enable only after confirming headroom
+    # (e.g. on a paid instance, or alongside ENABLE_BERT=false).
     ENABLE_FAKE_REVIEW_MODULE: bool = False
     # Number of trusted reverse proxies between the client and this process
     # (Render/Vercel/any load balancer = 1 hop). Used to pick the real client

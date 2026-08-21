@@ -1,0 +1,66 @@
+/**
+ * Baseera typography utility classes -- one class per role in the type
+ * system requested for Phase 1 (display, h1-h6, body large, body, small,
+ * caption, label). Built entirely from tokens.css variables so the scale
+ * stays a single source of truth.
+ */
+
+.bsr-text-display {
+  font-family: var(--bsr-font-display);
+  font-size: var(--bsr-fs-display);
+  line-height: var(--bsr-lh-display);
+  font-weight: var(--bsr-fw-display);
+  letter-spacing: var(--bsr-ls-display);
+  text-wrap: balance;
+  color: var(--bsr-text);
+  margin: 0;
+}
+
+.bsr-h1, .bsr-h2, .bsr-h3, .bsr-h4, .bsr-h5, .bsr-h6 {
+  font-family: var(--bsr-font-display);
+  color: var(--bsr-text);
+  text-wrap: balance;
+  margin: 0;
+}
+.bsr-h1 { font-size: var(--bsr-fs-h1); line-height: var(--bsr-lh-h1); font-weight: var(--bsr-fw-h1); letter-spacing: var(--bsr-ls-h1); }
+.bsr-h2 { font-size: var(--bsr-fs-h2); line-height: var(--bsr-lh-h2); font-weight: var(--bsr-fw-h2); letter-spacing: var(--bsr-ls-h2); }
+.bsr-h3 { font-size: var(--bsr-fs-h3); line-height: var(--bsr-lh-h3); font-weight: var(--bsr-fw-h3); letter-spacing: var(--bsr-ls-h3); }
+.bsr-h4 { font-size: var(--bsr-fs-h4); line-height: var(--bsr-lh-h4); font-weight: var(--bsr-fw-h4); letter-spacing: var(--bsr-ls-h4); }
+.bsr-h5 { font-size: var(--bsr-fs-h5); line-height: var(--bsr-lh-h5); font-weight: var(--bsr-fw-h5); letter-spacing: var(--bsr-ls-h5); }
+.bsr-h6 { font-size: var(--bsr-fs-h6); line-height: var(--bsr-lh-h6); font-weight: var(--bsr-fw-h6); letter-spacing: var(--bsr-ls-h6); }
+
+.bsr-body-lg {
+  font-family: var(--bsr-font-body); color: var(--bsr-text);
+  font-size: var(--bsr-fs-body-lg); line-height: var(--bsr-lh-body-lg); font-weight: var(--bsr-fw-body-lg);
+  max-width: 65ch; margin: 0;
+}
+.bsr-body {
+  font-family: var(--bsr-font-body); color: var(--bsr-text);
+  font-size: var(--bsr-fs-body); line-height: var(--bsr-lh-body); font-weight: var(--bsr-fw-body);
+  max-width: 65ch; margin: 0;
+}
+.bsr-sm {
+  font-family: var(--bsr-font-body); color: var(--bsr-text-muted);
+  font-size: var(--bsr-fs-sm); line-height: var(--bsr-lh-sm); font-weight: var(--bsr-fw-sm);
+  margin: 0;
+}
+.bsr-caption {
+  font-family: var(--bsr-font-body); color: var(--bsr-text-faint);
+  font-size: var(--bsr-fs-caption); line-height: var(--bsr-lh-caption); font-weight: var(--bsr-fw-caption);
+  margin: 0;
+}
+.bsr-label {
+  font-family: var(--bsr-font-body); color: var(--bsr-text-faint);
+  font-size: var(--bsr-fs-label); line-height: var(--bsr-lh-label); font-weight: var(--bsr-fw-label);
+  letter-spacing: var(--bsr-ls-label); text-transform: uppercase;
+  margin: 0;
+}
+
+.bsr-mono { font-family: var(--bsr-font-mono); font-variant-numeric: tabular-nums; }
+
+/* Visually hidden but still available to assistive tech -- used for
+   accessible loading labels and skip-content affordances. */
+.bsr-visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}

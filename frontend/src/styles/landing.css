@@ -1,0 +1,647 @@
+/**
+ * Baseera landing page (Phase 2). Built entirely on Phase 1 `--bsr-*`
+ * tokens and the `ui/` component classes -- no new design system, no new
+ * dependency. Scoped to `.bsr-landing` and `bsr-lp-*` classes so nothing
+ * here can leak into the existing app shell (`.app-shell`, `.page`, ...).
+ * Imported only by LandingPreviewPage.tsx.
+ */
+
+.bsr-landing {
+  background: var(--bsr-bg);
+  color: var(--bsr-text);
+  font-family: var(--bsr-font-body);
+  overflow-x: hidden;
+}
+
+/* Grid/flex items default to min-width:auto, which lets any nowrap
+   descendant (StatusPill/Badge text, button labels, ...) become that
+   item's minimum content width -- inflating the whole track/row wider than
+   the viewport on narrow screens. Found and fixed twice independently
+   (hero content, recommendation split) before adding this as a blanket
+   rule for every landing-page element rather than hunting for a third. */
+.bsr-landing [class*="bsr-lp-"] { min-width: 0; }
+
+.bsr-lp-container {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 clamp(1.25rem, 4vw, 3rem);
+}
+
+.bsr-lp-section {
+  padding: clamp(2.25rem, 5vw, 4rem) 0;
+}
+.bsr-lp-section--tight { padding: clamp(1.85rem, 3.75vw, 2.75rem) 0; }
+/* A run of sections that form one connected story (pain points -> trends ->
+   recommendation) sit closer together than unrelated sections -- the gap
+   between them should read as continuation, not a fresh topic. */
+.bsr-lp-section--story { padding: clamp(1.5rem, 3vw, 2.25rem) 0; }
+
+.bsr-lp-eyebrow {
+  color: var(--bsr-gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.bsr-lp-eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--bsr-gold);
+  display: inline-block;
+}
+
+.bsr-lp-section-head { max-width: 62ch; margin-bottom: clamp(1.5rem, 3vw, 2.25rem); }
+/* Phase 1's shared SectionHeader (ui-kit.css) defaults to a roomier
+   margin-bottom -- tightened here, scoped to the landing page only, as
+   part of the page-length reduction pass. */
+.bsr-landing .bsr-section-header { margin-bottom: var(--bsr-space-4); }
+.bsr-lp-section-head h2 { margin-top: var(--bsr-space-2); }
+.bsr-lp-section-head p { margin-top: var(--bsr-space-3); color: var(--bsr-text-muted); }
+.bsr-lp-section-head--center { margin-left: auto; margin-right: auto; text-align: center; }
+
+/* ---------- Scroll reveal ---------- */
+.bsr-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--bsr-duration-slow) var(--bsr-ease-emphasized), transform var(--bsr-duration-slow) var(--bsr-ease-emphasized);
+}
+.bsr-reveal--visible { opacity: 1; transform: translateY(0); }
+
+/* ---------- Generic responsive grids ---------- */
+.bsr-lp-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--bsr-space-5); }
+.bsr-lp-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bsr-space-5); }
+.bsr-lp-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--bsr-space-5); }
+@media (max-width: 1024px) {
+  .bsr-lp-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+  .bsr-lp-grid-2, .bsr-lp-grid-3, .bsr-lp-grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ============================= Navbar ============================= */
+
+.bsr-lp-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--bsr-z-sticky);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background-color var(--bsr-duration-base) var(--bsr-ease-standard), border-color var(--bsr-duration-base) var(--bsr-ease-standard), backdrop-filter var(--bsr-duration-base) var(--bsr-ease-standard);
+}
+.bsr-lp-nav--scrolled {
+  background: rgba(8, 18, 37, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--bsr-border);
+}
+.bsr-lp-nav__inner { display: flex; align-items: center; gap: var(--bsr-space-5); padding: 0.85rem 0; }
+.bsr-lp-nav__brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+.bsr-lp-nav__mark { border-radius: 8px; display: block; }
+.bsr-lp-nav__wordmark { font-family: var(--bsr-font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: 0.1em; color: var(--bsr-text); }
+
+.bsr-lp-nav__links { display: flex; align-items: center; gap: var(--bsr-space-5); margin: 0 auto; }
+.bsr-lp-nav__link { color: var(--bsr-text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; transition: color var(--bsr-duration-fast) var(--bsr-ease-standard); }
+.bsr-lp-nav__link:hover { color: var(--bsr-text); }
+.bsr-lp-nav__link:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 3px; border-radius: 3px; }
+
+.bsr-lp-nav__actions { display: flex; align-items: center; gap: var(--bsr-space-3); flex-shrink: 0; }
+/* Scoped under .bsr-lp-nav (0,2,0) rather than the bare class (0,1,0) --
+   the bare class tied with ui-kit.css's .bsr-icon-btn (also 0,1,0) and lost
+   on import order, which was the desktop-hamburger bug. This wins on
+   specificity instead of source order, so it can't regress the same way. */
+.bsr-lp-nav .bsr-lp-nav__menu-btn { display: none; }
+
+@media (max-width: 860px) {
+  .bsr-lp-nav__links, .bsr-lp-nav__actions { display: none; }
+  .bsr-lp-nav .bsr-lp-nav__menu-btn { display: inline-flex; margin-left: auto; }
+}
+
+/* Anchor targets: the navbar is fixed and ~68px tall (a bit more once the
+   scrolled glass state's border/blur is in), so without this a jumped-to
+   heading lands right underneath it. */
+#platform, #insights, #how-it-works, #responsible-ai {
+  scroll-margin-top: 96px;
+}
+
+.bsr-lp-mobile-nav { display: flex; flex-direction: column; gap: 0.25rem; }
+.bsr-lp-mobile-nav__link { padding: 0.7rem 0.2rem; color: var(--bsr-text); text-decoration: none; font-size: 1rem; font-weight: 600; border-bottom: 1px solid var(--bsr-border); }
+.bsr-lp-mobile-nav__link:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 2px; }
+.bsr-lp-mobile-nav__actions { display: flex; flex-direction: column; gap: var(--bsr-space-3); margin-top: var(--bsr-space-4); }
+
+/* ============================= Hero ============================= */
+
+.bsr-lp-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding-top: 5rem;
+}
+
+.bsr-lp-hero__media { position: absolute; inset: 0; z-index: 0; }
+.bsr-lp-hero__video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.bsr-lp-hero__overlay-navy { position: absolute; inset: 0; background: rgba(3, 7, 18, 0.55); }
+.bsr-lp-hero__overlay-gradient {
+  position: absolute; inset: 0;
+  /* Strengthened and pushed further right so the headline column sits on
+     a near-opaque ground -- the video stays fully visible from ~65% right,
+     which is where the dashboard cluster/CTAs need it, not competing text. */
+  background: linear-gradient(90deg, rgba(3, 7, 18, 0.97) 0%, rgba(3, 7, 18, 0.94) 32%, rgba(3, 7, 18, 0.62) 58%, rgba(3, 7, 18, 0.22) 78%, rgba(3, 7, 18, 0.06) 100%);
+}
+.bsr-lp-hero__overlay-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(680px 680px at 78% 28%, rgba(35, 199, 255, 0.20), transparent 60%);
+}
+.bsr-lp-hero__overlay-gold {
+  position: absolute; inset: 0;
+  background: radial-gradient(460px 340px at 18% 82%, rgba(244, 185, 66, 0.14), transparent 65%);
+}
+.bsr-lp-hero__overlay-noise {
+  position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.bsr-lp-hero__grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: clamp(2rem, 5vw, 4rem);
+  width: 100%;
+  padding-top: clamp(2rem, 6vw, 3rem);
+  padding-bottom: clamp(2rem, 6vw, 3rem);
+}
+
+.bsr-lp-hero__content {
+  max-width: 46rem;
+  min-width: 0; /* grid items default to min-width:auto, which lets the
+    nowrap CTA buttons inside force this whole column wider than the
+    viewport on narrow screens instead of letting flex-wrap do its job --
+    this is what was actually being clipped by .bsr-lp-hero's overflow:
+    hidden (page-level scrollWidth checks miss it for exactly that reason). */
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--bsr-duration-slow) var(--bsr-ease-emphasized), transform var(--bsr-duration-slow) var(--bsr-ease-emphasized);
+}
+.bsr-lp-hero__content--in { opacity: 1; transform: translateY(0); }
+
+.bsr-lp-hero__logo { display: block; margin-bottom: var(--bsr-space-4); border-radius: 10px; }
+.bsr-lp-hero__headline { margin-top: var(--bsr-space-4); color: var(--bsr-text); }
+.bsr-lp-hero__copy { margin-top: var(--bsr-space-4); color: var(--bsr-text-muted); }
+.bsr-lp-hero__actions { display: flex; flex-wrap: wrap; gap: var(--bsr-space-3); margin-top: var(--bsr-space-5); }
+.bsr-lp-hero__honesty { margin-top: var(--bsr-space-4); color: var(--bsr-text-faint); }
+
+/* Sharpen the primary/secondary contrast in the hero specifically: the
+   primary CTA gets a resting glow (not just on hover) so it reads as THE
+   action, and the secondary is flattened to pure outline so it doesn't
+   compete with it. */
+.bsr-lp-hero__actions .bsr-btn--primary { box-shadow: var(--bsr-glow-blue); }
+.bsr-lp-hero__actions .bsr-btn--secondary { background: transparent; border-color: var(--bsr-border-strong); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.bsr-lp-hero__actions .bsr-btn--secondary:hover:not(.bsr-btn--disabled) { background: var(--bsr-glass-bg); }
+
+.bsr-lp-hero__visual { position: relative; min-width: 0; }
+
+/* ---------- Hero glass cluster ---------- */
+
+.bsr-lp-hero-cluster {
+  position: relative;
+  transform: translate3d(var(--parallax-x, 0px), var(--parallax-y, 0px), 0);
+  transition: transform 0.18s ease-out;
+  padding-left: 184px; /* was 210px -- part of the ~12% crowding reduction */
+}
+
+/* Right-hand column, normal flow -- height comes from real content, so the
+   review-card gutter below can position against it without guessing. */
+.bsr-lp-hero-cluster__stack { display: flex; flex-direction: column; gap: var(--bsr-space-4); position: relative; z-index: 3; }
+
+.bsr-lp-hero-card {
+  width: 100%;
+  max-width: 228px; /* was 260px */
+  padding: 0.85rem var(--bsr-space-4); /* was --bsr-space-4 all round */
+  animation: bsr-lp-float 6s ease-in-out infinite;
+}
+.bsr-lp-hero-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--bsr-space-2); }
+.bsr-lp-hero-card__foot { margin-top: var(--bsr-space-3); border-top: 1px solid var(--bsr-border); padding-top: var(--bsr-space-2); }
+
+.bsr-lp-hero-card--dashboard { animation-delay: 0s; }
+.bsr-lp-hero-card--pain { animation-delay: 1.2s; }
+.bsr-lp-hero-card--recommendation { animation-delay: 0.6s; }
+
+.bsr-lp-mini-ring {
+  position: relative;
+  width: 84px; height: 84px; border-radius: 50%; /* was 96px */
+  background: conic-gradient(var(--bsr-positive) 0% var(--ring-pct, 60%), var(--bsr-elevated) var(--ring-pct, 60%) 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  margin: var(--bsr-space-2) auto;
+}
+.bsr-lp-mini-ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--bsr-surface); }
+.bsr-lp-mini-ring > * { position: relative; z-index: 1; }
+
+.bsr-lp-mini-legend { display: flex; flex-direction: column; gap: 0.3rem; font-size: var(--bsr-fs-caption); color: var(--bsr-text-muted); }
+.bsr-lp-mini-legend span { display: flex; align-items: center; gap: 0.4rem; }
+.bsr-lp-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.bsr-lp-dot--positive { background: var(--bsr-positive); }
+.bsr-lp-dot--warning { background: var(--bsr-warning); }
+.bsr-lp-dot--negative { background: var(--bsr-negative); }
+
+.bsr-lp-bar-track { height: 6px; border-radius: 999px; background: var(--bsr-elevated); overflow: hidden; margin: 0.5rem 0 0.35rem; }
+.bsr-lp-bar-fill { height: 100%; border-radius: 999px; }
+.bsr-lp-bar-fill--negative { background: var(--bsr-negative); }
+.bsr-lp-bar-fill--positive { background: var(--bsr-positive); }
+.bsr-lp-bar-fill--blue { background: var(--bsr-blue); }
+
+/* Left gutter only -- 0 to 168px, entirely clear of the stack (which starts
+   at the cluster's 184px padding-left), so these can never cover its text. */
+.bsr-lp-hero-reviews { position: absolute; top: 0; left: 0; width: 168px; height: 100%; pointer-events: none; z-index: 2; }
+.bsr-lp-review-card {
+  position: absolute;
+  left: 0;
+  width: 168px;
+  background: var(--bsr-glass-bg);
+  backdrop-filter: blur(var(--bsr-glass-blur));
+  -webkit-backdrop-filter: blur(var(--bsr-glass-blur));
+  border: 1px solid var(--bsr-glass-border);
+  border-radius: var(--bsr-radius-md);
+  padding: var(--bsr-space-3);
+  box-shadow: var(--bsr-shadow-md);
+  pointer-events: auto;
+  animation: bsr-lp-float 7s ease-in-out infinite;
+}
+.bsr-lp-review-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--bsr-space-2); margin-bottom: 0.4rem; }
+.bsr-lp-review-card__text { color: var(--bsr-text); }
+
+.bsr-lp-hero-review-0 { top: 0%; animation-delay: 0.2s; }
+.bsr-lp-hero-review-1 { top: 38%; animation-delay: 1.6s; }
+.bsr-lp-hero-review-2 { top: 76%; animation-delay: 0.9s; }
+.bsr-lp-hero-reviews__badge { position: absolute; bottom: -2rem; left: 0; pointer-events: none; }
+
+.bsr-lp-hero-lines { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.bsr-lp-hero-line { fill: none; stroke: var(--bsr-blue); stroke-width: 1.5; opacity: 0.35; stroke-dasharray: 4 6; }
+.bsr-lp-hero-line--gold { stroke: var(--bsr-gold); }
+
+@keyframes bsr-lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@media (max-width: 1200px) {
+  .bsr-lp-hero-cluster { padding-left: 158px; }
+  .bsr-lp-hero-reviews { width: 142px; }
+  .bsr-lp-review-card { width: 142px; }
+  .bsr-lp-hero-card { max-width: 204px; }
+}
+
+/* Mobile hero cluster: NOT the desktop layout shrunk down. Only the
+   dashboard mini-card + 2 (not 3) review cards survive, in normal document
+   flow (no absolute floating, no parallax, no connecting lines) -- a
+   deliberately simplified "proof strip" under the CTAs rather than a dense
+   floating collage. */
+@media (max-width: 900px) {
+  .bsr-lp-hero__grid { grid-template-columns: 1fr; }
+  .bsr-lp-hero__visual { margin-top: var(--bsr-space-6); }
+
+  /* The navbar already shows the mark at this width -- a second large logo
+     immediately below it read as duplicated branding. Content starts at the
+     eyebrow instead. Desktop keeps it (part of the hero composition). */
+  .bsr-lp-hero__logo { display: none; }
+
+  .bsr-lp-hero-cluster { padding-left: 0; transform: none !important; min-width: 0; }
+  .bsr-lp-hero-cluster__stack { flex-direction: row; min-width: 0; }
+  .bsr-lp-hero-card { animation: none; max-width: none; flex: 1 1 auto; min-width: 0; }
+  .bsr-lp-hero-card__head { flex-wrap: wrap; row-gap: 0.35rem; }
+  .bsr-lp-hero-card--pain, .bsr-lp-hero-card--recommendation { display: none; }
+
+  .bsr-lp-hero-reviews {
+    position: static; width: auto; height: auto; z-index: auto;
+    display: flex; gap: var(--bsr-space-3);
+    margin-top: var(--bsr-space-4); overflow-x: auto; overscroll-behavior-x: contain;
+    padding-bottom: var(--bsr-space-2); -webkit-overflow-scrolling: touch;
+  }
+  .bsr-lp-review-card { position: static; width: 228px; flex-shrink: 0; animation: none; }
+  .bsr-lp-hero-review-2 { display: none; } /* keep to exactly 2 visible cards */
+  .bsr-lp-hero-reviews__badge { position: static; display: inline-flex; margin-top: var(--bsr-space-3); }
+
+  .bsr-lp-hero-lines { display: none; } /* decorative-only noise, dropped on small screens */
+}
+
+@media (pointer: coarse) {
+  .bsr-lp-hero-cluster { transform: none !important; }
+}
+
+.bsr-lp-modal-video { width: 100%; border-radius: var(--bsr-radius-md); display: block; background: #000; }
+
+/* ============================= Journey ============================= */
+/* A single connected luminous path -- one glowing line runs through every
+   node via each stage's ::before/::after rail segments, not four separate
+   bordered columns. Flips from a horizontal row to a vertical rail purely
+   by swapping flex-direction at the breakpoint -- same markup both ways. */
+
+.bsr-lp-journey { display: flex; gap: var(--bsr-space-5); align-items: flex-start; margin-top: var(--bsr-space-3); }
+.bsr-lp-journey__stage { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+.bsr-lp-journey__rail { display: flex; align-items: center; height: 28px; margin-bottom: var(--bsr-space-4); }
+.bsr-lp-journey__rail::before,
+.bsr-lp-journey__rail::after {
+  content: ""; flex: 1; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--bsr-blue-border));
+}
+.bsr-lp-journey__rail::after { background: linear-gradient(90deg, var(--bsr-blue-border), transparent); }
+.bsr-lp-journey__rail--first::before { visibility: hidden; }
+.bsr-lp-journey__rail--last::after { visibility: hidden; }
+.bsr-lp-journey__node {
+  flex-shrink: 0; width: 14px; height: 14px; border-radius: 50%; margin: 0 var(--bsr-space-2);
+  background: radial-gradient(circle at 34% 30%, var(--bsr-cyan), var(--bsr-blue));
+  box-shadow: 0 0 0 5px var(--bsr-blue-soft), 0 0 18px rgba(35, 199, 255, 0.5);
+}
+
+.bsr-lp-journey__index { color: var(--bsr-text-faint); font-size: var(--bsr-fs-caption); }
+.bsr-lp-journey__stage-label { display: block; color: var(--bsr-blue); margin: 0.5rem 0 0.5rem; }
+.bsr-lp-journey__body p.bsr-h5 { margin-bottom: 0.35rem; }
+
+@media (max-width: 768px) {
+  .bsr-lp-journey { flex-direction: column; gap: 0; }
+  .bsr-lp-journey__stage { flex-direction: row; gap: var(--bsr-space-4); }
+  .bsr-lp-journey__rail { flex-direction: column; height: auto; width: 14px; margin-bottom: 0; align-self: stretch; }
+  .bsr-lp-journey__rail::before,
+  .bsr-lp-journey__rail::after {
+    width: 2px; height: auto; flex: 1;
+    background: linear-gradient(180deg, transparent, var(--bsr-blue-border));
+  }
+  .bsr-lp-journey__rail::after { background: linear-gradient(180deg, var(--bsr-blue-border), transparent); }
+  .bsr-lp-journey__node { margin: var(--bsr-space-2) 0; }
+  .bsr-lp-journey__body { padding-bottom: var(--bsr-space-5); }
+}
+
+/* ============================= Capabilities ============================= */
+/* Deliberate hierarchy break: 3 capabilities get real presence (oversized
+   index numeral, larger type, glass depth); the other 5 are demoted into
+   one shared compact panel instead of 5 more identical cards. */
+
+.bsr-lp-capabilities-primary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bsr-space-4); margin-bottom: var(--bsr-space-4); }
+.bsr-lp-capability-primary { height: 100%; display: flex; flex-direction: column; }
+/* Compound selector (0,2,0) so this reliably beats .bsr-glass-card's own
+   padding (0,1,0) regardless of CSS import order -- see the desktop-
+   hamburger fix above for why source order can't be trusted here. */
+.bsr-lp-capabilities-primary .bsr-lp-capability-primary { padding: var(--bsr-space-4); }
+.bsr-lp-capability-primary__index { color: var(--bsr-blue); font-size: var(--bsr-fs-h2); font-weight: 700; opacity: 0.55; line-height: 1; }
+.bsr-lp-capability-primary p.bsr-h4 { margin-top: var(--bsr-space-3); color: var(--bsr-text); }
+.bsr-lp-capability-primary p.bsr-body { margin-top: var(--bsr-space-2); color: var(--bsr-text-muted); }
+@media (max-width: 900px) { .bsr-lp-capabilities-primary { grid-template-columns: 1fr; } }
+
+.bsr-lp-capabilities-secondary {
+  background: var(--bsr-surface); border: 1px solid var(--bsr-border); border-radius: var(--bsr-radius-lg);
+  padding: var(--bsr-space-4) var(--bsr-space-5);
+}
+.bsr-lp-capabilities-secondary__label { color: var(--bsr-text-faint); display: block; margin-bottom: var(--bsr-space-3); }
+.bsr-lp-capabilities-secondary__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bsr-space-4) var(--bsr-space-5); }
+.bsr-lp-capabilities-secondary__row { padding-top: var(--bsr-space-3); border-top: 1px solid var(--bsr-border); }
+.bsr-lp-capabilities-secondary__row p.bsr-h6 { color: var(--bsr-text); margin-bottom: 0.25rem; }
+.bsr-lp-capabilities-secondary__row p.bsr-caption { color: var(--bsr-text-muted); }
+@media (max-width: 900px) { .bsr-lp-capabilities-secondary__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .bsr-lp-capabilities-secondary__grid { grid-template-columns: 1fr; } }
+
+/* ============================= Dashboard preview ============================= */
+/* The dashboard's second major visual moment: a product-window frame
+   (chrome header + glass body) rather than another bare card grid, with
+   blue edge lighting and a fade/rise entrance the first time it scrolls
+   into view (paired with the chart-mount gate already in the component). */
+
+.bsr-lp-window {
+  border-radius: var(--bsr-radius-xl);
+  border: 1px solid var(--bsr-border-strong);
+  background: var(--bsr-surface);
+  box-shadow: var(--bsr-shadow-lg), inset 0 0 0 1px rgba(35, 199, 255, 0.08), 0 0 60px -20px rgba(35, 199, 255, 0.18);
+  overflow: hidden;
+  opacity: 0; transform: translateY(24px) scale(0.98);
+  transition: opacity var(--bsr-duration-slow) var(--bsr-ease-emphasized), transform var(--bsr-duration-slow) var(--bsr-ease-emphasized);
+}
+.bsr-lp-window--in { opacity: 1; transform: translateY(0) scale(1); }
+
+.bsr-lp-window__chrome {
+  display: flex; align-items: center; gap: var(--bsr-space-3);
+  padding: 0.6rem var(--bsr-space-5);
+  background: var(--bsr-elevated);
+  border-bottom: 1px solid var(--bsr-border);
+}
+.bsr-lp-window__dots { display: flex; gap: 6px; }
+.bsr-lp-window__dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--bsr-border-strong); display: block; }
+.bsr-lp-window__dots i:last-child { background: var(--bsr-blue); opacity: 0.7; }
+.bsr-lp-window__title { color: var(--bsr-text-faint); font-size: var(--bsr-fs-caption); }
+.bsr-lp-window__badge { margin-left: auto; }
+
+.bsr-lp-window__body { padding: var(--bsr-space-4) var(--bsr-space-5); }
+@media (max-width: 560px) { .bsr-lp-window__body { padding: var(--bsr-space-4); } }
+
+.bsr-lp-kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--bsr-space-4); margin-bottom: var(--bsr-space-4); }
+.bsr-lp-kpi-tile { display: flex; flex-direction: column; gap: 0.4rem; }
+@media (max-width: 768px) { .bsr-lp-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.bsr-lp-dashboard-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bsr-space-3); }
+.bsr-lp-dashboard-panel--wide { grid-column: span 2; }
+@media (max-width: 1024px) {
+  .bsr-lp-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bsr-lp-dashboard-panel--wide { grid-column: span 2; }
+}
+@media (max-width: 700px) {
+  .bsr-lp-dashboard-grid { grid-template-columns: 1fr; }
+  .bsr-lp-dashboard-panel--wide { grid-column: span 1; }
+}
+
+.bsr-lp-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--bsr-space-3); }
+.bsr-lp-chart-placeholder { border-radius: var(--bsr-radius-md); background: var(--bsr-elevated); }
+
+.bsr-lp-mini-legend--center { align-items: center; margin-top: var(--bsr-space-3); }
+
+.bsr-lp-bar-list { display: flex; flex-direction: column; gap: var(--bsr-space-3); }
+.bsr-lp-bar-list--spacious { gap: var(--bsr-space-3); }
+.bsr-lp-bar-row { display: grid; grid-template-columns: 9rem 1fr 3.2rem; align-items: center; gap: var(--bsr-space-3); }
+.bsr-lp-bar-row--large { grid-template-columns: 11rem 1fr 9rem; }
+@media (max-width: 560px) {
+  .bsr-lp-bar-row, .bsr-lp-bar-row--large { grid-template-columns: 1fr; gap: 0.3rem; }
+}
+.bsr-lp-bar-track--tall { height: 10px; }
+.bsr-lp-bar-fill--gold { background: var(--bsr-gold); }
+.bsr-lp-bar-fill { transition: width 0.8s var(--bsr-ease-emphasized); }
+
+.bsr-lp-recent-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.bsr-lp-recent-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--bsr-space-3); padding: 0.5rem 0; border-bottom: 1px solid var(--bsr-border); }
+.bsr-lp-recent-row:last-child { border-bottom: none; }
+.bsr-lp-recent-row p { color: var(--bsr-text); }
+@media (max-width: 560px) { .bsr-lp-recent-row { grid-template-columns: 1fr; } }
+
+/* ============================= Sentiment intelligence ============================= */
+/* One full-width segmented bar + oversized figures instead of three
+   identical cards. */
+
+.bsr-lp-sentiment-bar { display: flex; height: 16px; border-radius: 999px; overflow: hidden; background: var(--bsr-elevated); margin-top: var(--bsr-space-5); }
+.bsr-lp-sentiment-bar__segment { height: 100%; flex-shrink: 0; transition: width 1s var(--bsr-ease-emphasized); }
+.bsr-lp-sentiment-bar__segment--positive { background: var(--bsr-positive); }
+.bsr-lp-sentiment-bar__segment--warning { background: var(--bsr-warning); }
+.bsr-lp-sentiment-bar__segment--negative { background: var(--bsr-negative); }
+
+.bsr-lp-sentiment-figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bsr-space-5); margin-top: var(--bsr-space-5); }
+.bsr-lp-sentiment-figure { display: flex; flex-direction: column; }
+.bsr-lp-sentiment-figure__value { font-size: clamp(2.75rem, 5vw, 4rem); font-weight: 800; line-height: 1; margin-bottom: var(--bsr-space-2); }
+.bsr-lp-sentiment-figure__value--positive { color: var(--bsr-positive); }
+.bsr-lp-sentiment-figure__value--warning { color: var(--bsr-warning); }
+.bsr-lp-sentiment-figure__value--negative { color: var(--bsr-negative); }
+.bsr-lp-sentiment-figure p.bsr-sm { color: var(--bsr-text-muted); margin-top: 0.35rem; }
+@media (max-width: 768px) { .bsr-lp-sentiment-figures { grid-template-columns: 1fr; gap: var(--bsr-space-4); } }
+
+/* ============================= Connected story rail ============================= */
+/* Shared visual thread running through Pain Points -> Trends ->
+   Recommendations: a numbered, glowing node per section with a line that
+   bleeds into the next section's gap, so three distinct <section>s read as
+   one continuing analytical story instead of three unrelated topics. */
+
+.bsr-lp-story-rail { position: relative; padding-left: 3rem; }
+.bsr-lp-story-rail__line {
+  position: absolute; top: 4px; bottom: -3.25rem; left: 13px; width: 2px;
+  background: linear-gradient(180deg, var(--bsr-blue), var(--bsr-blue-border) 70%, transparent);
+}
+.bsr-lp-story-rail--first .bsr-lp-story-rail__line { top: 4px; }
+.bsr-lp-story-rail--last .bsr-lp-story-rail__line { bottom: 0; background: linear-gradient(180deg, var(--bsr-gold), transparent); }
+.bsr-lp-story-rail__node {
+  position: absolute; top: 0; left: 0;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bsr-elevated); border: 1px solid var(--bsr-blue-border); color: var(--bsr-blue);
+  font-weight: 700; font-size: 0.8rem;
+  box-shadow: 0 0 16px rgba(35, 199, 255, 0.35);
+}
+.bsr-lp-story-rail__node--gold { border-color: var(--bsr-gold-border); color: var(--bsr-gold); box-shadow: 0 0 16px rgba(244, 185, 66, 0.35); }
+
+/* ============================= Recommendations ============================= */
+
+.bsr-lp-recommendation-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--bsr-space-6); align-items: center; }
+.bsr-lp-recommendation-split__intro { min-width: 0; }
+.bsr-lp-recommendation-split__intro p.bsr-caption { color: var(--bsr-text-faint); margin-top: var(--bsr-space-4); }
+@media (max-width: 900px) { .bsr-lp-recommendation-split { grid-template-columns: 1fr; gap: var(--bsr-space-5); } }
+
+/* min-width:0 -- otherwise the StatusPill's nowrap badge text ("Rule-based
+   demonstration recommendation") sets this grid item's min-content width,
+   which inflates the whole shared 1fr column (and therefore the intro
+   column stacked in the same track on mobile) wider than the viewport. */
+.bsr-lp-recommendation-card { max-width: 32rem; min-width: 0; }
+.bsr-lp-recommendation-card__basis { color: var(--bsr-text-muted); margin-top: var(--bsr-space-3); }
+
+/* ============================= How it works ============================= */
+/* Alternating left/right rows, an oversized outline numeral standing in for
+   imagery we don't have -- not a third card grid. */
+
+.bsr-lp-how-rows { display: flex; flex-direction: column; gap: var(--bsr-space-4); }
+/* justify-content:center keeps the numeral+body pair anchored to the same
+   central region for every row -- without it, row-reverse's default
+   packing pins the numeral flush to the row's outer edge (touching the
+   container boundary) while the body sits far from it, reading as
+   detached rather than as a pair that simply flipped sides. */
+.bsr-lp-how-row { display: flex; align-items: center; justify-content: center; gap: var(--bsr-space-6); }
+.bsr-lp-how-row--reverse { flex-direction: row-reverse; }
+.bsr-lp-how-row__numeral {
+  flex-shrink: 0; font-size: clamp(3.5rem, 6.5vw, 5.5rem); font-weight: 800; line-height: 1;
+  color: transparent; -webkit-text-stroke: 1.5px var(--bsr-blue-border);
+  width: clamp(5rem, 9vw, 7rem);
+}
+.bsr-lp-how-row--reverse .bsr-lp-how-row__numeral { -webkit-text-stroke-color: var(--bsr-gold-border); }
+.bsr-lp-how-row__body p.bsr-h3 { color: var(--bsr-text); }
+.bsr-lp-how-row__body p.bsr-body { color: var(--bsr-text-muted); margin-top: var(--bsr-space-2); }
+@media (max-width: 700px) {
+  .bsr-lp-how-row, .bsr-lp-how-row--reverse { flex-direction: row; justify-content: flex-start; gap: var(--bsr-space-4); align-items: flex-start; }
+  .bsr-lp-how-row__numeral { font-size: 3rem; width: auto; }
+}
+
+/* ============================= Responsible AI ============================= */
+
+.bsr-lp-responsible-split { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: var(--bsr-space-6); align-items: start; }
+.bsr-lp-responsible-split__intro { position: sticky; top: 6.5rem; }
+.bsr-lp-responsible-split__intro h2 { margin-top: var(--bsr-space-2); }
+.bsr-lp-responsible-list { list-style: none; margin: 0; padding: 0; }
+.bsr-lp-responsible-list__row { padding: var(--bsr-space-3) 0; border-top: 1px solid var(--bsr-border); }
+.bsr-lp-responsible-list__row:last-child { border-bottom: 1px solid var(--bsr-border); }
+.bsr-lp-responsible-list__row p.bsr-h6 { color: var(--bsr-text); }
+.bsr-lp-responsible-list__row p.bsr-sm { color: var(--bsr-text-muted); margin-top: 0.4rem; }
+@media (max-width: 900px) {
+  .bsr-lp-responsible-split { grid-template-columns: 1fr; }
+  .bsr-lp-responsible-split__intro { position: static; }
+}
+
+/* ============================= Tech transparency ============================= */
+
+.bsr-lp-tech-section {
+  background: radial-gradient(900px 320px at 15% 0%, rgba(35, 199, 255, 0.06), transparent 60%), radial-gradient(700px 320px at 90% 100%, rgba(244, 185, 66, 0.05), transparent 60%);
+}
+.bsr-lp-tech-row { display: flex; flex-wrap: wrap; gap: var(--bsr-space-3); }
+.bsr-lp-tech-pill { font-size: var(--bsr-fs-sm); padding: 0.5rem 0.9rem; }
+.bsr-lp-tech-pill__note { color: var(--bsr-text-faint); font-weight: 400; }
+
+/* ============================= Final CTA ============================= */
+
+.bsr-lp-final-cta {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  background:
+    radial-gradient(1000px 480px at 50% 0%, rgba(35, 199, 255, 0.16), transparent 60%),
+    radial-gradient(800px 420px at 50% 100%, rgba(244, 185, 66, 0.14), transparent 60%),
+    var(--bsr-surface);
+  border-top: 1px solid var(--bsr-border);
+  border-bottom: 1px solid var(--bsr-border);
+}
+/* Same noise texture as the hero -- a deliberate, subtle echo of the
+   opening moment rather than new copy repeating the hero's words. */
+.bsr-lp-final-cta__noise {
+  position: absolute; inset: 0; opacity: 0.04; mix-blend-mode: overlay; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* One controlled light-beam effect -- a soft band that drifts very slowly
+   left to right. Neutralized globally under prefers-reduced-motion via the
+   `*` transition/animation override in tokens.css. */
+.bsr-lp-final-cta__beam {
+  position: absolute; top: -20%; bottom: -20%; left: -30%; width: 30%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(35, 199, 255, 0.07) 45%, rgba(244, 185, 66, 0.05) 55%, transparent);
+  animation: bsr-lp-beam-drift 14s ease-in-out infinite;
+}
+@keyframes bsr-lp-beam-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(220%); }
+}
+.bsr-lp-final-cta__inner { display: flex; flex-direction: column; align-items: center; gap: var(--bsr-space-5); }
+/* text-wrap:balance on a large centered multi-line heading triggers a
+   double-paint/ghosting artifact in headless Chromium (confirmed via
+   screenshot verification, unrelated to font loading) -- centered display
+   text doesn't need the balance pass anyway since it's short and already
+   wraps predictably, so it's turned off for this heading specifically. */
+.bsr-lp-final-cta h2 { max-width: 34ch; text-wrap: normal; }
+
+/* ============================= Footer ============================= */
+
+.bsr-lp-footer { padding: clamp(3rem, 6vw, 4.5rem) 0 2rem; background: var(--bsr-bg); }
+.bsr-lp-footer__grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--bsr-space-6); padding-bottom: var(--bsr-space-6); border-bottom: 1px solid var(--bsr-border); }
+.bsr-lp-footer__brand { display: flex; flex-direction: column; gap: 0.4rem; }
+.bsr-lp-footer__brand img { margin-bottom: 0.4rem; }
+.bsr-lp-footer__brand p.bsr-sm { color: var(--bsr-text-muted); max-width: 28ch; }
+.bsr-lp-footer__links { list-style: none; margin: var(--bsr-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.bsr-lp-footer__links a { color: var(--bsr-text-muted); text-decoration: none; font-size: var(--bsr-fs-sm); }
+.bsr-lp-footer__links a:hover { color: var(--bsr-text); }
+.bsr-lp-footer__bottom { padding-top: var(--bsr-space-4); }
+.bsr-lp-footer__bottom p { color: var(--bsr-text-faint); }
+@media (max-width: 700px) { .bsr-lp-footer__grid { grid-template-columns: 1fr; } }
+
+/* ============================= Mobile safety net ============================= */
+
+@media (max-width: 600px) {
+  /* Comfortable touch targets -- the default button padding measures under
+     the ~44px guideline once you account for font line-height. */
+  .bsr-landing .bsr-btn { padding: 0.85rem 1.4rem; }
+  .bsr-landing .bsr-icon-btn--md { width: 44px; height: 44px; }
+
+  /* Anything that renders as a horizontal list of numbers/labels (KPI
+     tiles, tech pills) scrolls sideways within its own box rather than
+     ever forcing the page itself wider than the viewport. */
+  .bsr-lp-tech-row { overflow-x: auto; padding-bottom: 0.25rem; -webkit-overflow-scrolling: touch; }
+}

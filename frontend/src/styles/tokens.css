@@ -1,0 +1,161 @@
+/**
+ * Baseera design tokens (Phase 1 — design foundation).
+ *
+ * Deliberately namespaced with a `--bsr-` prefix and layered on top of the
+ * existing `index.css` variables (`--bg`, `--accent`, ...) rather than
+ * replacing them. The current pages still read the old variables, so this
+ * file is purely additive: it does not change how any existing route looks.
+ * Phase 3 (page reskin) is expected to repoint pages at these tokens and
+ * retire the old set.
+ *
+ * Breakpoints can't live in CSS custom properties (media queries can't read
+ * var()), so the pixel values below are mirrored in `./breakpoints.ts` for
+ * use from TypeScript/JS. Keep the two in sync by hand.
+ *   sm: 480px · md: 768px · lg: 1024px · xl: 1280px
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&display=swap');
+
+:root {
+  /* ---------- Color: surfaces ---------- */
+  --bsr-bg: #030712;
+  --bsr-surface: #081225;
+  --bsr-elevated: #0D1B2E;
+  --bsr-border: rgba(244, 247, 251, 0.11);
+  --bsr-border-strong: rgba(244, 247, 251, 0.20);
+
+  /* ---------- Color: text ---------- */
+  --bsr-text: #F4F7FB;
+  --bsr-text-muted: #91A4BD;
+  --bsr-text-faint: #6C7F9B;
+  --bsr-text-on-accent: #041018;
+  --bsr-text-on-gold: #241a02;
+
+  /* ---------- Color: brand accents ---------- */
+  --bsr-blue: #23C7FF;
+  --bsr-blue-soft: rgba(35, 199, 255, 0.14);
+  --bsr-blue-border: rgba(35, 199, 255, 0.35);
+  --bsr-cyan: #39E7F5;
+  --bsr-gold: #F4B942;
+  --bsr-gold-soft: rgba(244, 185, 66, 0.14);
+  --bsr-gold-border: rgba(244, 185, 66, 0.38);
+
+  /* ---------- Color: semantic status ---------- */
+  --bsr-positive: #3DDC97;
+  --bsr-positive-soft: rgba(61, 220, 151, 0.14);
+  --bsr-positive-border: rgba(61, 220, 151, 0.35);
+  --bsr-negative: #FF667A;
+  --bsr-negative-soft: rgba(255, 102, 122, 0.14);
+  --bsr-negative-border: rgba(255, 102, 122, 0.38);
+  --bsr-warning: #F5B942;
+  --bsr-warning-soft: rgba(245, 185, 66, 0.14);
+  --bsr-warning-border: rgba(245, 185, 66, 0.38);
+  --bsr-neutral: var(--bsr-text-muted);
+  --bsr-neutral-soft: rgba(145, 164, 189, 0.14);
+  --bsr-neutral-border: rgba(145, 164, 189, 0.32);
+
+  /* ---------- Typography: families ---------- */
+  --bsr-font-display: "Sora", "Segoe UI Semibold", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --bsr-font-body: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bsr-font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  /* ---------- Typography: scale (size / line-height / weight) ---------- */
+  --bsr-fs-display: 3rem;      --bsr-lh-display: 1.08;  --bsr-fw-display: 700; --bsr-ls-display: -0.01em;
+  --bsr-fs-h1: 2.25rem;        --bsr-lh-h1: 1.15;       --bsr-fw-h1: 700;      --bsr-ls-h1: -0.01em;
+  --bsr-fs-h2: 1.875rem;       --bsr-lh-h2: 1.2;        --bsr-fw-h2: 700;      --bsr-ls-h2: -0.01em;
+  --bsr-fs-h3: 1.5rem;         --bsr-lh-h3: 1.25;       --bsr-fw-h3: 600;      --bsr-ls-h3: normal;
+  --bsr-fs-h4: 1.25rem;        --bsr-lh-h4: 1.3;        --bsr-fw-h4: 600;      --bsr-ls-h4: normal;
+  --bsr-fs-h5: 1.125rem;       --bsr-lh-h5: 1.35;       --bsr-fw-h5: 600;      --bsr-ls-h5: normal;
+  --bsr-fs-h6: 1rem;           --bsr-lh-h6: 1.4;        --bsr-fw-h6: 600;      --bsr-ls-h6: 0.01em;
+  --bsr-fs-body-lg: 1.125rem;  --bsr-lh-body-lg: 1.6;   --bsr-fw-body-lg: 400;
+  --bsr-fs-body: 1rem;         --bsr-lh-body: 1.6;      --bsr-fw-body: 400;
+  --bsr-fs-sm: 0.875rem;       --bsr-lh-sm: 1.5;        --bsr-fw-sm: 400;
+  --bsr-fs-caption: 0.75rem;   --bsr-lh-caption: 1.45;  --bsr-fw-caption: 500;
+  --bsr-fs-label: 0.72rem;     --bsr-lh-label: 1.3;     --bsr-fw-label: 600;   --bsr-ls-label: 0.08em;
+
+  /* ---------- Spacing scale (4px base) ---------- */
+  --bsr-space-1: 0.25rem;
+  --bsr-space-2: 0.5rem;
+  --bsr-space-3: 0.75rem;
+  --bsr-space-4: 1rem;
+  --bsr-space-5: 1.5rem;
+  --bsr-space-6: 2rem;
+  --bsr-space-7: 3rem;
+  --bsr-space-8: 4rem;
+
+  /* ---------- Radius ---------- */
+  --bsr-radius-sm: 8px;
+  --bsr-radius-md: 12px;
+  --bsr-radius-lg: 18px;
+  --bsr-radius-xl: 24px;
+  --bsr-radius-full: 999px;
+
+  /* ---------- Borders ---------- */
+  --bsr-border-width: 1px;
+  --bsr-border-width-thick: 1.5px;
+
+  /* ---------- Shadows & glow ---------- */
+  --bsr-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --bsr-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+  --bsr-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 24px 56px -20px rgba(0, 0, 0, 0.7);
+  --bsr-glow-blue: 0 0 0 1px var(--bsr-blue-border), 0 0 32px -4px rgba(35, 199, 255, 0.35);
+  --bsr-glow-gold: 0 0 0 1px var(--bsr-gold-border), 0 0 32px -4px rgba(244, 185, 66, 0.32);
+
+  /* ---------- Glass surfaces ---------- */
+  --bsr-glass-bg: rgba(13, 27, 46, 0.55);
+  --bsr-glass-border: rgba(244, 247, 251, 0.12);
+  --bsr-glass-blur: 18px;
+  --bsr-glass-highlight: linear-gradient(155deg, rgba(244, 247, 251, 0.08), transparent 60%);
+
+  /* ---------- Z-index scale ---------- */
+  --bsr-z-base: 0;
+  --bsr-z-dropdown: 100;
+  --bsr-z-sticky: 200;
+  --bsr-z-overlay: 300;
+  --bsr-z-modal: 400;
+  --bsr-z-toast: 500;
+
+  /* ---------- Motion ---------- */
+  --bsr-duration-fast: 120ms;
+  --bsr-duration-base: 200ms;
+  --bsr-duration-slow: 320ms;
+  --bsr-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --bsr-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Explicit light-theme fallback token set. Not wired to a UI toggle in
+   Phase 1 (the brief calls for dark as the primary/only theme right now),
+   but tokens are defined so components never hard-code a color that only
+   works on the dark ground -- see FRONTEND_INTEGRATION for future toggle. */
+:root[data-theme="light"] {
+  --bsr-bg: #F4F7FB;
+  --bsr-surface: #FFFFFF;
+  --bsr-elevated: #ECF1F8;
+  --bsr-border: #D8E1EE;
+  --bsr-border-strong: #C2CEE0;
+  --bsr-text: #0B1526;
+  --bsr-text-muted: #45536B;
+  --bsr-text-faint: #6B7A93;
+  --bsr-blue: #0089BE;
+  --bsr-cyan: #04909C;
+  --bsr-gold: #9C6B12;
+  --bsr-positive: #187C54;
+  --bsr-negative: #C21F38;
+  --bsr-warning: #9C6B12;
+  --bsr-glass-bg: rgba(255, 255, 255, 0.65);
+  --bsr-glass-border: rgba(11, 21, 38, 0.10);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bsr-duration-fast: 0ms;
+    --bsr-duration-base: 0ms;
+    --bsr-duration-slow: 0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

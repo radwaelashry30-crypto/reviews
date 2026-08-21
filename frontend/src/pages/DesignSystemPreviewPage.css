@@ -1,0 +1,57 @@
+/**
+ * Styles for the temporary internal Design System Preview page only.
+ * Not part of the reusable Baseera component library -- delete this file
+ * alongside DesignSystemPreviewPage.tsx once Phase 3 no longer needs a
+ * standalone verification surface.
+ */
+
+.dsp-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 460px at 10% -10%, rgba(35, 199, 255, 0.10), transparent 60%),
+    radial-gradient(900px 420px at 100% 0%, rgba(244, 185, 66, 0.08), transparent 55%),
+    var(--bsr-bg);
+  color: var(--bsr-text);
+  font-family: var(--bsr-font-body);
+  padding: var(--bsr-space-7) 0 var(--bsr-space-8);
+}
+
+.dsp-banner {
+  background: var(--bsr-warning-soft);
+  border-bottom: 1px solid var(--bsr-warning-border);
+  color: var(--bsr-warning);
+  text-align: center;
+  padding: var(--bsr-space-2) var(--bsr-space-4);
+  font-size: var(--bsr-fs-caption);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.dsp-header { margin-bottom: var(--bsr-space-7); }
+.dsp-header p { margin-top: var(--bsr-space-2); }
+
+.dsp-section { margin-bottom: var(--bsr-space-8); display: flex; flex-direction: column; gap: var(--bsr-space-4); }
+
+.dsp-swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--bsr-space-4); }
+.dsp-swatch-chip { height: 64px; border-radius: var(--bsr-radius-md); border: 1px solid var(--bsr-border-strong); }
+.dsp-swatch-label { margin-top: var(--bsr-space-2); font-size: var(--bsr-fs-caption); color: var(--bsr-text-muted); }
+.dsp-swatch-hex { font-family: var(--bsr-font-mono); font-size: var(--bsr-fs-caption); color: var(--bsr-text-faint); }
+
+.dsp-type-row { display: flex; align-items: baseline; gap: var(--bsr-space-4); padding: var(--bsr-space-3) 0; border-bottom: 1px dashed var(--bsr-border); }
+.dsp-type-row:last-child { border-bottom: none; }
+.dsp-type-tag { font-family: var(--bsr-font-mono); font-size: var(--bsr-fs-caption); color: var(--bsr-text-faint); width: 9rem; flex-shrink: 0; }
+
+.dsp-btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--bsr-space-3); padding: var(--bsr-space-3) 0; border-bottom: 1px solid var(--bsr-border); }
+.dsp-btn-row:last-child { border-bottom: none; }
+.dsp-btn-row-label { width: 8rem; flex-shrink: 0; font-size: var(--bsr-fs-sm); font-weight: 600; color: var(--bsr-text-muted); }
+
+.dsp-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--bsr-space-4); }
+.dsp-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bsr-space-4); }
+@media (max-width: 768px) {
+  .dsp-grid-2, .dsp-grid-3 { grid-template-columns: 1fr; }
+}
+
+.dsp-pill-row { display: flex; flex-wrap: wrap; gap: var(--bsr-space-3); }
+
+.dsp-checklist { margin: 0; padding-left: 1.2rem; color: var(--bsr-text-muted); font-size: var(--bsr-fs-sm); }
+.dsp-checklist li { margin: 0.3rem 0; }

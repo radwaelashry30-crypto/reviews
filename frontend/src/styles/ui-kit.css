@@ -1,0 +1,252 @@
+/**
+ * Baseera component primitives (Phase 1). Everything here is scoped to the
+ * `bsr-` prefix and reads only `--bsr-*` tokens from tokens.css -- no
+ * dependency on / conflict with the legacy classes in index.css.
+ */
+
+/* ============================= Button ============================= */
+
+.bsr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bsr-space-2);
+  font-family: var(--bsr-font-body);
+  font-weight: 600;
+  font-size: var(--bsr-fs-sm);
+  line-height: 1;
+  padding: 0.7rem 1.35rem;
+  border-radius: var(--bsr-radius-full);
+  border: var(--bsr-border-width) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--bsr-duration-fast) var(--bsr-ease-standard),
+    border-color var(--bsr-duration-fast) var(--bsr-ease-standard),
+    color var(--bsr-duration-fast) var(--bsr-ease-standard),
+    transform var(--bsr-duration-fast) var(--bsr-ease-standard),
+    box-shadow var(--bsr-duration-fast) var(--bsr-ease-standard);
+}
+.bsr-btn:focus-visible {
+  outline: 2px solid var(--bsr-blue);
+  outline-offset: 2px;
+}
+.bsr-btn--full { display: flex; width: 100%; }
+
+.bsr-btn--primary {
+  background: linear-gradient(135deg, var(--bsr-blue), var(--bsr-cyan) 85%);
+  color: var(--bsr-text-on-accent);
+}
+.bsr-btn--primary:hover:not(.bsr-btn--disabled) { filter: brightness(1.08); transform: translateY(-1px); box-shadow: var(--bsr-glow-blue); }
+.bsr-btn--primary:active:not(.bsr-btn--disabled) { transform: translateY(0); filter: brightness(0.96); }
+
+.bsr-btn--premium {
+  background: var(--bsr-gold);
+  color: var(--bsr-text-on-gold);
+}
+.bsr-btn--premium:hover:not(.bsr-btn--disabled) { filter: brightness(1.08); transform: translateY(-1px); box-shadow: var(--bsr-glow-gold); }
+.bsr-btn--premium:active:not(.bsr-btn--disabled) { transform: translateY(0); filter: brightness(0.94); }
+
+.bsr-btn--secondary {
+  background: var(--bsr-glass-bg);
+  backdrop-filter: blur(var(--bsr-glass-blur));
+  -webkit-backdrop-filter: blur(var(--bsr-glass-blur));
+  color: var(--bsr-text);
+  border-color: var(--bsr-border-strong);
+}
+.bsr-btn--secondary:hover:not(.bsr-btn--disabled) { border-color: var(--bsr-blue-border); background: var(--bsr-elevated); }
+.bsr-btn--secondary:active:not(.bsr-btn--disabled) { background: var(--bsr-surface); }
+
+.bsr-btn--ghost {
+  background: transparent;
+  color: var(--bsr-text-muted);
+  border-color: transparent;
+}
+.bsr-btn--ghost:hover:not(.bsr-btn--disabled) { color: var(--bsr-text); background: var(--bsr-elevated); }
+.bsr-btn--ghost:active:not(.bsr-btn--disabled) { background: var(--bsr-surface); }
+
+.bsr-btn--destructive {
+  background: transparent;
+  color: var(--bsr-negative);
+  border-color: var(--bsr-negative-border);
+}
+.bsr-btn--destructive:hover:not(.bsr-btn--disabled) { background: var(--bsr-negative-soft); }
+.bsr-btn--destructive:active:not(.bsr-btn--disabled) { filter: brightness(0.92); }
+
+.bsr-btn--disabled,
+.bsr-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.bsr-btn--loading { cursor: progress; }
+.bsr-btn--loading .bsr-btn__label { opacity: 0.75; }
+
+.bsr-btn__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  display: inline-block;
+  animation: bsr-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes bsr-spin { to { transform: rotate(360deg); } }
+
+.bsr-btn__icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.bsr-btn__label { display: inline-flex; }
+
+/* ============================= Icon button ============================= */
+
+.bsr-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--bsr-radius-md);
+  border: var(--bsr-border-width) solid var(--bsr-border-strong);
+  background: var(--bsr-elevated);
+  color: var(--bsr-text);
+  cursor: pointer;
+  transition: background-color var(--bsr-duration-fast) var(--bsr-ease-standard), border-color var(--bsr-duration-fast) var(--bsr-ease-standard), color var(--bsr-duration-fast) var(--bsr-ease-standard);
+}
+.bsr-icon-btn--md { width: 40px; height: 40px; }
+.bsr-icon-btn--sm { width: 32px; height: 32px; }
+.bsr-icon-btn:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 2px; }
+.bsr-icon-btn:hover:not(:disabled) { border-color: var(--bsr-blue-border); color: var(--bsr-blue); }
+.bsr-icon-btn:active:not(:disabled) { background: var(--bsr-surface); }
+.bsr-icon-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.bsr-icon-btn--primary { background: linear-gradient(135deg, var(--bsr-blue), var(--bsr-cyan) 85%); color: var(--bsr-text-on-accent); border-color: transparent; }
+.bsr-icon-btn--ghost { background: transparent; border-color: transparent; color: var(--bsr-text-muted); }
+.bsr-icon-btn--destructive { background: transparent; border-color: var(--bsr-negative-border); color: var(--bsr-negative); }
+.bsr-icon-btn__glyph { display: inline-flex; line-height: 1; font-size: 0.9rem; }
+
+/* ============================= Cards ============================= */
+
+.bsr-glass-card {
+  position: relative;
+  background: var(--bsr-glass-bg);
+  background-image: var(--bsr-glass-highlight);
+  backdrop-filter: blur(var(--bsr-glass-blur));
+  -webkit-backdrop-filter: blur(var(--bsr-glass-blur));
+  border: var(--bsr-border-width) solid var(--bsr-glass-border);
+  border-radius: var(--bsr-radius-lg);
+  padding: var(--bsr-space-5);
+  box-shadow: var(--bsr-shadow-md);
+}
+.bsr-glass-card--glow-blue { box-shadow: var(--bsr-shadow-md), var(--bsr-glow-blue); }
+.bsr-glass-card--glow-gold { box-shadow: var(--bsr-shadow-md), var(--bsr-glow-gold); }
+
+.bsr-surface-card {
+  background: var(--bsr-surface);
+  border: var(--bsr-border-width) solid var(--bsr-border);
+  border-radius: var(--bsr-radius-lg);
+  padding: var(--bsr-space-5);
+  box-shadow: var(--bsr-shadow-sm);
+}
+.bsr-surface-card--interactive {
+  transition: transform var(--bsr-duration-fast) var(--bsr-ease-standard), border-color var(--bsr-duration-fast) var(--bsr-ease-standard);
+}
+.bsr-surface-card--interactive:hover { transform: translateY(-2px); border-color: var(--bsr-border-strong); }
+
+/* ============================= Badge / status pill ============================= */
+
+.bsr-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: var(--bsr-radius-full);
+  font-family: var(--bsr-font-body);
+  font-size: var(--bsr-fs-caption);
+  font-weight: 600;
+  border: var(--bsr-border-width) solid var(--bsr-neutral-border);
+  color: var(--bsr-neutral);
+  background: var(--bsr-neutral-soft);
+  white-space: nowrap;
+}
+.bsr-status-pill__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.bsr-status-pill--positive { color: var(--bsr-positive); border-color: var(--bsr-positive-border); background: var(--bsr-positive-soft); }
+.bsr-status-pill--negative { color: var(--bsr-negative); border-color: var(--bsr-negative-border); background: var(--bsr-negative-soft); }
+.bsr-status-pill--warning { color: var(--bsr-warning); border-color: var(--bsr-warning-border); background: var(--bsr-warning-soft); }
+.bsr-status-pill--blue { color: var(--bsr-blue); border-color: var(--bsr-blue-border); background: var(--bsr-blue-soft); }
+.bsr-status-pill--gold { color: var(--bsr-gold); border-color: var(--bsr-gold-border); background: var(--bsr-gold-soft); }
+.bsr-status-pill--neutral { color: var(--bsr-neutral); border-color: var(--bsr-neutral-border); background: var(--bsr-neutral-soft); }
+.bsr-demo-badge { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.66rem; }
+
+/* ============================= Modal ============================= */
+
+.bsr-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--bsr-space-4);
+  z-index: var(--bsr-z-modal);
+  animation: bsr-fade-in var(--bsr-duration-base) var(--bsr-ease-standard);
+}
+.bsr-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: min(88vh, 720px);
+  overflow-y: auto;
+  background: var(--bsr-elevated);
+  border: var(--bsr-border-width) solid var(--bsr-border-strong);
+  border-radius: var(--bsr-radius-lg);
+  padding: var(--bsr-space-5);
+  box-shadow: var(--bsr-shadow-lg);
+  animation: bsr-rise var(--bsr-duration-base) var(--bsr-ease-emphasized);
+}
+.bsr-modal:focus-visible { outline: none; }
+.bsr-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--bsr-space-4); }
+.bsr-modal__description { color: var(--bsr-text-muted); margin-top: var(--bsr-space-2); }
+.bsr-modal__body { margin-top: var(--bsr-space-4); }
+
+@keyframes bsr-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bsr-rise { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ============================= Page scaffolding ============================= */
+
+.bsr-page-container { max-width: 1180px; margin: 0 auto; width: 100%; padding: 0 var(--bsr-space-5); }
+.bsr-page-container--wide { max-width: 1440px; }
+
+.bsr-section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--bsr-space-5); flex-wrap: wrap; margin-bottom: var(--bsr-space-5); }
+.bsr-section-header__text { display: flex; flex-direction: column; gap: var(--bsr-space-2); max-width: 62ch; }
+.bsr-section-header__eyebrow { color: var(--bsr-gold); }
+.bsr-section-header__description { color: var(--bsr-text-muted); }
+
+/* ============================= States ============================= */
+
+.bsr-loading-state { display: flex; align-items: center; gap: var(--bsr-space-2); padding: var(--bsr-space-4); color: var(--bsr-text-muted); }
+.bsr-loading-state--full { flex-direction: column; justify-content: center; min-height: 220px; text-align: center; }
+.bsr-loading-state__spinner { color: var(--bsr-blue); width: 18px; height: 18px; }
+
+.bsr-empty-state, .bsr-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--bsr-space-2);
+  padding: var(--bsr-space-6) var(--bsr-space-5);
+  border-radius: var(--bsr-radius-lg);
+  border: 1.5px dashed var(--bsr-border-strong);
+  color: var(--bsr-text-muted);
+  min-height: 200px;
+}
+.bsr-error-state { border-style: solid; border-color: var(--bsr-negative-border); background: var(--bsr-negative-soft); }
+.bsr-empty-state__icon, .bsr-error-state__icon { font-size: 1.75rem; }
+.bsr-error-state__code { display: block; color: var(--bsr-negative); margin-bottom: 0.2rem; }
+.bsr-empty-state__action, .bsr-error-state__action { margin-top: var(--bsr-space-2); }
+
+/* ============================= Focus safety net ============================= */
+
+/* Never remove a focus outline without a replacement -- this is the
+   fallback for any interactive element inside the new design system that
+   doesn't define its own :focus-visible treatment yet. */
+:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 2px; }

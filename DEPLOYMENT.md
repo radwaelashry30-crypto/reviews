@@ -12,7 +12,7 @@ Two independent services, both connect directly to the GitHub repo (no tokens/se
 
 1. Create a free account: https://dashboard.render.com/register — sign up with GitHub (no card required for the free tier).
 2. Authorize Render to access the `reviews` repository when prompted.
-3. **New → Web Service** → select `radwaelashry30-crypto/reviews`.
+3. **New → Web Service** → select `radwaelashry30-crypto/baseera-marketplace-analytics`.
 4. Fill in:
    - **Name**: `olist-marketplace-backend` (or anything)
    - **Region**: closest to you
@@ -33,7 +33,7 @@ Two independent services, both connect directly to the GitHub repo (no tokens/se
 ## Part 2 — Frontend on Vercel
 
 1. Create a free account: https://vercel.com/signup — sign up with GitHub, authorize access to the `reviews` repo.
-2. **Add New → Project** → import `radwaelashry30-crypto/reviews`.
+2. **Add New → Project** → import `radwaelashry30-crypto/baseera-marketplace-analytics`.
 3. **Root Directory**: click **Edit** and set it to `frontend` (important).
 4. **Environment Variables**: add
    - `VITE_API_BASE_URL` = `https://olist-marketplace-backend.onrender.com/api/v1` (your actual Render URL from Part 1, step 7)

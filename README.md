@@ -2,6 +2,10 @@
 
 An interactive analytics dashboard and review-sentiment classifier built on a fixed, static Olist Brazilian e-commerce research dataset (2016-2018) — a FastAPI backend, a React/TypeScript frontend, and the full ML pipeline extracted and corrected from the original research notebook. No live/streaming data source or scheduled refresh pipeline; every chart and prediction runs against the same processed snapshot (`data/processed/*.parquet`) or a request-time model call, not a live feed.
 
+> **New here? Two documents summarize the whole project:**
+> - [`PROJECT_JOURNEY.md`](PROJECT_JOURNEY.md) ([PDF](PROJECT_JOURNEY.pdf)) — every phase of work, every problem found, and the actual fix applied and verified for each, in chronological order (technical-review phases, CI/CD, Docker hardening, three real production incidents caught live, and the full fake-review detector investigation).
+> - [`Baseera_Project_Walkthrough.ipynb`](Baseera_Project_Walkthrough.ipynb) — a runnable, step-by-step notebook covering the whole pipeline from raw data upload to live deployment, with real code and real numbers.
+
 ## 1. Overview
 
 This project turns a single 151-cell research notebook into a modular, testable, deployable application with:
@@ -144,6 +148,7 @@ Vite + React + TypeScript + React Router. `src/api/` centralizes all HTTP calls;
 ```
 Olist_Marketplace_Platform/
 ├── README.md, requirements.txt, .gitignore, .env.example, docker-compose.yml, Makefile
+├── PROJECT_JOURNEY.md, PROJECT_JOURNEY.pdf, Baseera_Project_Walkthrough.ipynb   # full project history + walkthrough
 ├── ARTIFACT_AUDIT.md, DATA_QUALITY_AUDIT.md, DATA_LEAKAGE_AUDIT.md, DATA_GRAIN_AUDIT.md, MODEL_COMPARISON_AUDIT.md
 ├── API_DOCUMENTATION.md, FRONTEND_INTEGRATION.md
 ├── backend/            # FastAPI app + ML code + scripts + tests

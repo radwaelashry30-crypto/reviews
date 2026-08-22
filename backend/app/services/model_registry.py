@@ -211,7 +211,11 @@ class ModelRegistry:
         from app.ml.fake_review_detection import load_fake_review_pipeline
 
         device_idx = 0 if self.device == "cuda" else -1
-        return self._lazy_load("fake_review", "fake_review_pipe", lambda: load_fake_review_pipeline(device=device_idx))
+        load_bert = not settings.FAKE_REVIEW_TFIDF_ONLY
+        return self._lazy_load(
+            "fake_review", "fake_review_pipe",
+            lambda: load_fake_review_pipeline(device=device_idx, load_bert=load_bert),
+        )
 
     def get_shap_explainer(self):
         """Loads a SHAP explainer wrapping the fine-tuned BERT model on first

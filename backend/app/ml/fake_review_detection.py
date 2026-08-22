@@ -50,6 +50,14 @@ been separately measured on Olist data (no genuinely-labeled Olist fake-
 review data exists to measure it against -- the same gap that ruled out
 training directly on this project's own data in the first place).
 
+TF-IDF-only mode (`load_bert=False`): the DistilBERT component is ~257MB on
+disk -- a real memory risk stacked on top of CNN2D + the rest of the app on
+Render's 512MB free tier. `FAKE_REVIEW_TFIDF_ONLY=true` (app/core/config.py)
+drops it and serves the TF-IDF+LogReg component alone (~350KB), measured
+independently at 0/188 confident flips (95% CI upper bound 2.0%) but a much
+higher abstain rate (41.2% vs. the full ensemble's 6.2%) -- it answers less
+often on this deployment, not less reliably when it does answer.
+
 UNCERTAIN band: rather than forcing every prediction into a binary FAKE/
 REAL call, predictions within `UNCERTAIN_MARGIN` of the 0.5 decision
 boundary are reported as "UNCERTAIN" instead of a confident verdict. This
@@ -67,16 +75,15 @@ MODEL_DIR = Path(__file__).resolve().parents[3] / "models"
 BERT_MODEL_DIR = MODEL_DIR / "fake_review_detector_v2_consistency"
 TFIDF_MODEL_DIR = MODEL_DIR / "fake_review_detector_tfidf"
 
-MODEL_DESCRIPTION = (
-    "Ensemble: DistilBERT (paraphrase-consistency fine-tuned) + TF-IDF/Logistic Regression, "
-    "both trained on the Ott et al. Deceptive Opinion Spam Corpus"
-)
-
 # Predictions within 0.5 +/- this margin are reported as UNCERTAIN rather
 # than a confident FAKE/REAL call -- see module docstring.
 UNCERTAIN_MARGIN = 0.1
 
-DISCLAIMER = (
+_ENSEMBLE_DESCRIPTION = (
+    "Ensemble: DistilBERT (paraphrase-consistency fine-tuned) + TF-IDF/Logistic Regression, "
+    "both trained on the Ott et al. Deceptive Opinion Spam Corpus"
+)
+_ENSEMBLE_DISCLAIMER = (
     "Trained on hotel reviews (Ott et al., Cornell), applied here to e-commerce reviews -- "
     "a real domain shift not separately measured, since no genuinely-labeled fake-review data "
     "exists for Olist reviews. Within that limitation: measured over all 320 held-out test "
@@ -87,18 +94,37 @@ DISCLAIMER = (
     "checkpoints (the original external model and a first retrain) that failed this same test."
 )
 
+# TF-IDF-only mode: skips loading the ~257MB DistilBERT component entirely --
+# for RAM-constrained deployments (see ModelRegistry.get_fake_review_pipeline
+# and FAKE_REVIEW_TFIDF_ONLY in app/core/config.py). The TF-IDF+LogReg
+# classifier alone is ~350KB, a negligible memory cost. Large-scale testing
+# (results/fake_review_stability_largescale_test.json) measured this
+# component ALONE at 0/188 confident flips (95% CI upper bound 2.0%) -- the
+# tradeoff for dropping DistilBERT is a much higher abstain rate (41.2% vs.
+# the full ensemble's 6.2%), not lower reliability on the calls it does make.
+_TFIDF_ONLY_DESCRIPTION = "TF-IDF / Logistic Regression, trained on the Ott et al. Deceptive Opinion Spam Corpus"
+_TFIDF_ONLY_DISCLAIMER = (
+    "Trained on hotel reviews (Ott et al., Cornell), applied here to e-commerce reviews -- "
+    "a real domain shift not separately measured. Running in TF-IDF-only mode (the DistilBERT "
+    "component is disabled on this deployment to stay within its memory budget). Measured over "
+    "all 320 held-out test reviews, this configuration gave a confidently wrong verdict under "
+    "meaning-preserving rewording 0/188 times (95% CI upper bound 2.0%), but reports UNCERTAIN "
+    "far more often (41.2% of cases) than the full ensemble does (6.2%) -- it answers less often, "
+    "not less reliably when it does. See MODEL_COMPARISON_AUDIT.md for the full investigation."
+)
+
 
 def is_fake_review_model_available() -> bool:
     try:
         import joblib  # noqa: F401
-        import transformers  # noqa: F401
-        return BERT_MODEL_DIR.is_dir() and TFIDF_MODEL_DIR.is_dir()
+        return TFIDF_MODEL_DIR.is_dir()
     except ImportError:
         return False
 
 
 class FakeReviewEnsemble:
-    """Bundles both loaded models. `score()` returns the ensemble fake-probability."""
+    """Bundles the loaded model(s). `score()` returns the fake-probability.
+    `bert_model`/`tokenizer` are None in TF-IDF-only mode (see module docstring)."""
 
     def __init__(self, tokenizer, bert_model, vectorizer, tfidf_clf, device):
         self.tokenizer = tokenizer
@@ -107,7 +133,19 @@ class FakeReviewEnsemble:
         self.tfidf_clf = tfidf_clf
         self.device = device
 
+    @property
+    def description(self) -> str:
+        return _TFIDF_ONLY_DESCRIPTION if self.bert_model is None else _ENSEMBLE_DESCRIPTION
+
+    @property
+    def disclaimer(self) -> str:
+        return _TFIDF_ONLY_DISCLAIMER if self.bert_model is None else _ENSEMBLE_DISCLAIMER
+
     def score(self, text: str) -> float:
+        tfidf_prob = float(self.tfidf_clf.predict_proba(self.vectorizer.transform([text]))[0, 1])
+        if self.bert_model is None:
+            return tfidf_prob
+
         import torch
 
         enc = self.tokenizer(text, truncation=True, max_length=256, return_tensors="pt")
@@ -119,9 +157,18 @@ class FakeReviewEnsemble:
         return (bert_prob + tfidf_prob) / 2.0
 
 
-def load_fake_review_pipeline(device: int = -1) -> FakeReviewEnsemble:
-    """Loads both models once. Callers (ModelRegistry) should cache and reuse the result."""
+def load_fake_review_pipeline(device: int = -1, load_bert: bool = True) -> FakeReviewEnsemble:
+    """Loads the model(s) once. Callers (ModelRegistry) should cache and reuse
+    the result. `load_bert=False` skips the ~257MB DistilBERT component
+    entirely -- see FAKE_REVIEW_TFIDF_ONLY in app/core/config.py."""
     import joblib
+
+    vectorizer = joblib.load(TFIDF_MODEL_DIR / "vectorizer.pkl")
+    tfidf_clf = joblib.load(TFIDF_MODEL_DIR / "classifier.pkl")
+
+    if not load_bert:
+        return FakeReviewEnsemble(None, None, vectorizer, tfidf_clf, None)
+
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -131,9 +178,6 @@ def load_fake_review_pipeline(device: int = -1) -> FakeReviewEnsemble:
     bert_model = AutoModelForSequenceClassification.from_pretrained(BERT_MODEL_DIR)
     bert_model.eval()
     bert_model.to(torch_device)
-
-    vectorizer = joblib.load(TFIDF_MODEL_DIR / "vectorizer.pkl")
-    tfidf_clf = joblib.load(TFIDF_MODEL_DIR / "classifier.pkl")
 
     return FakeReviewEnsemble(tokenizer, bert_model, vectorizer, tfidf_clf, torch_device)
 
@@ -158,13 +202,13 @@ def score_single_review(pipe: FakeReviewEnsemble, text: str) -> dict:
     verdict = _verdict(fake_probability)
     return {
         "available": True,
-        "model": MODEL_DESCRIPTION,
+        "model": pipe.description,
         "fake_probability": round(fake_probability, 4),
         "verdict": verdict,
         "is_fake": verdict == "FAKE",
         "reliable": verdict != "UNCERTAIN",
         "label_semantics_verified": True,
-        "disclaimer": DISCLAIMER,
+        "disclaimer": pipe.disclaimer,
     }
 
 
@@ -183,7 +227,7 @@ def score_reviews_for_fakeness(texts: list[str], pipe: FakeReviewEnsemble | None
 
     return {
         "available": True,
-        "model": MODEL_DESCRIPTION,
+        "model": pipe.description,
         "n_scored": len(texts),
         "n_failed": failures,
         "n_flagged_fake": int(sum(is_fake)),
@@ -191,5 +235,5 @@ def score_reviews_for_fakeness(texts: list[str], pipe: FakeReviewEnsemble | None
         "is_fake": is_fake,
         "confidence": [r.get("fake_probability", 0.0) for r in results],
         "label_semantics_verified": True,
-        "disclaimer": DISCLAIMER,
+        "disclaimer": pipe.disclaimer,
     }

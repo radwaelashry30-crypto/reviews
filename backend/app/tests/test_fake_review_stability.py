@@ -4,11 +4,14 @@ score()) so these are deterministic and fast, without needing the real
 (257MB DistilBERT + TF-IDF) models. See MODEL_COMPARISON_AUDIT.md and
 results/fake_review_stability_largescale_test.json for the live evidence
 behind the UNCERTAIN-margin design (all measured on the real models)."""
-from app.ml.fake_review_detection import UNCERTAIN_MARGIN, score_reviews_for_fakeness, score_single_review
+from app.ml.fake_review_detection import FakeReviewEnsemble, UNCERTAIN_MARGIN, score_reviews_for_fakeness, score_single_review
 
 
 class _FakeEnsemble:
     """Returns a fixed fake-probability regardless of input text."""
+
+    description = "fake ensemble (test double)"
+    disclaimer = "test double, not a real model"
 
     def __init__(self, probability: float):
         self.probability = probability
@@ -18,6 +21,9 @@ class _FakeEnsemble:
 
 
 class _BrokenEnsemble:
+    description = "fake ensemble (test double)"
+    disclaimer = "test double, not a real model"
+
     def score(self, text: str) -> float:
         raise RuntimeError("model not loaded")
 
@@ -74,8 +80,36 @@ def test_score_reviews_for_fakeness_aggregates_verdicts():
     assert result["verdicts"] == ["FAKE", "FAKE", "FAKE"]
 
 
+def test_ensemble_reports_tfidf_only_disclaimer_when_bert_absent():
+    """FAKE_REVIEW_TFIDF_ONLY (app/core/config.py) constructs a
+    FakeReviewEnsemble with bert_model=None -- the model/disclaimer text
+    must honestly reflect which mode actually scored the review, since the
+    two modes have measurably different abstain rates."""
+    class _FakeVectorizer:
+        def transform(self, texts):
+            return texts
+
+    class _FakeClassifier:
+        def predict_proba(self, X):
+            import numpy as np
+            return np.array([[0.3, 0.7]])
+
+    tfidf_only = FakeReviewEnsemble(None, None, _FakeVectorizer(), _FakeClassifier(), None)
+    assert "TF-IDF" in tfidf_only.description
+    assert "DistilBERT" not in tfidf_only.description
+    assert "TF-IDF-only mode" in tfidf_only.disclaimer
+    assert tfidf_only.score("some review text") == 0.7
+
+    full_ensemble = FakeReviewEnsemble(object(), object(), _FakeVectorizer(), _FakeClassifier(), "cpu")
+    assert "DistilBERT" in full_ensemble.description
+    assert "TF-IDF-only mode" not in full_ensemble.disclaimer
+
+
 def test_score_reviews_for_fakeness_mixed_verdicts():
     class _CyclingEnsemble:
+        description = "fake ensemble (test double)"
+        disclaimer = "test double, not a real model"
+
         def __init__(self, probs):
             self._probs = iter(probs)
 

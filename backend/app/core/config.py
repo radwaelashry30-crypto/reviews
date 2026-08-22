@@ -55,12 +55,20 @@ class Settings(BaseSettings):
     # enabling ABSA doesn't silently also expose this specific module. As of
     # the DistilBERT+TF-IDF ensemble (see app/ml/fake_review_detection.py),
     # this is no longer off for reliability reasons -- large-scale testing
-    # measured a 0.4% confident-wrong-verdict rate under paraphrasing. It's
-    # off by default because the DistilBERT component alone is ~257MB on
-    # disk, a real memory risk on Render's 512MB free tier stacked on top of
-    # CNN2D + the rest of the app -- enable only after confirming headroom
-    # (e.g. on a paid instance, or alongside ENABLE_BERT=false).
+    # measured a 0.4% confident-wrong-verdict rate under paraphrasing. Still
+    # off by default here (opt in per deployment, same pattern as ENABLE_BERT/
+    # ENABLE_CNN2D) -- pair with FAKE_REVIEW_TFIDF_ONLY=true below on a
+    # memory-constrained host.
     ENABLE_FAKE_REVIEW_MODULE: bool = False
+    # Drops the ~257MB DistilBERT component and serves the TF-IDF+LogReg
+    # classifier alone (~350KB) -- makes ENABLE_FAKE_REVIEW_MODULE safe on
+    # Render's 512MB free tier stacked on top of CNN2D + the rest of the app.
+    # Tradeoff, measured independently for each mode (see module docstring):
+    # the TF-IDF-only component alone answers less often (41.2% UNCERTAIN vs.
+    # the full ensemble's 6.2%), not less reliably when it does answer (0/188
+    # vs. 0/300 confident flips under paraphrasing, both with the full
+    # ensemble's rate inside this mode's own confidence interval).
+    FAKE_REVIEW_TFIDF_ONLY: bool = False
     # Number of trusted reverse proxies between the client and this process
     # (Render/Vercel/any load balancer = 1 hop). Used to pick the real client
     # IP out of X-Forwarded-For for rate limiting -- everything before that

@@ -1,3 +1,7 @@
+# Final defense-day delivery package (nested copy of this repo + models/data for
+# offline submission -- not meant to be version controlled, see PROJECT_STRUCTURE.md)
+Baseera_Final_Project/
+
 # Python
 __pycache__/
 *.pyc
@@ -32,7 +36,7 @@ frontend/.env
 data/raw/
 data/interim/
 data/uploads/
-notebooks/*.ipynb
+notebooks/olist_full_eda_preprocessing_PYTORCH.ipynb
 output/
 results/rfm_cluster_summary.csv
 

@@ -13,6 +13,15 @@ export interface ModalProps {
   children: ReactNode;
   /** Closing via a backdrop click; on for confirmations/info, off for anything with unsaved input. */
   closeOnBackdropClick?: boolean;
+  /** Appended to the dialog panel -- e.g. a drawer variant that pins it to
+   * one edge instead of centering it. All the focus/Escape/portal behavior
+   * below is unchanged either way. */
+  className?: string;
+  /** Hides the built-in title row when the panel supplies its own header
+   * (e.g. a nav drawer with a brand mark instead of a dialog title) --
+   * `title` is still required and used for the accessible name via
+   * aria-labelledby on an off-screen element. */
+  hideHeader?: boolean;
 }
 
 /**
@@ -21,7 +30,7 @@ export interface ModalProps {
  * portaled to document.body so it always sits above page content
  * regardless of where it's mounted.
  */
-export function Modal({ open, onClose, title, description, children, closeOnBackdropClick = true }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, closeOnBackdropClick = true, className, hideHeader = false }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -75,17 +84,29 @@ export function Modal({ open, onClose, title, description, children, closeOnBack
         if (closeOnBackdropClick && event.target === event.currentTarget) onClose();
       }}
     >
-      <div ref={dialogRef} className="bsr-modal" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descId : undefined} tabIndex={-1}>
-        <div className="bsr-modal__header">
-          <h2 id={titleId} className="bsr-h4">
-            {title}
-          </h2>
-          <button type="button" className="bsr-icon-btn bsr-icon-btn--ghost bsr-icon-btn--sm" onClick={onClose} aria-label="Close dialog">
-            <span className="bsr-icon-btn__glyph" aria-hidden="true">
-              ✕
-            </span>
-          </button>
-        </div>
+      <div
+        ref={dialogRef}
+        className={className ? `bsr-modal ${className}` : "bsr-modal"}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descId : undefined}
+        tabIndex={-1}
+      >
+        {hideHeader ? (
+          <span id={titleId} className="bsr-visually-hidden">{title}</span>
+        ) : (
+          <div className="bsr-modal__header">
+            <h2 id={titleId} className="bsr-h4">
+              {title}
+            </h2>
+            <button type="button" className="bsr-icon-btn bsr-icon-btn--ghost bsr-icon-btn--sm" onClick={onClose} aria-label="Close dialog">
+              <span className="bsr-icon-btn__glyph" aria-hidden="true">
+                ✕
+              </span>
+            </button>
+          </div>
+        )}
         {description && (
           <p id={descId} className="bsr-sm bsr-modal__description">
             {description}

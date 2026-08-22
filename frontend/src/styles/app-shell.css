@@ -1,0 +1,171 @@
+/**
+ * Baseera application shell (Phase 3A) -- sidebar, mobile drawer, and top
+ * header for the real app (everything behind Layout.tsx's <Outlet />).
+ * Built entirely on Phase 1 `--bsr-*` tokens and `ui/` components. Scoped
+ * to `.bsr-app-*` classes; the legacy `.app-shell`/`.app-header`/... rules
+ * in index.css are now unused (Layout.tsx no longer renders them) but left
+ * in place since other pages don't reference them either way.
+ */
+
+.bsr-app {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  min-height: 100vh;
+  background: var(--bsr-bg);
+  color: var(--bsr-text);
+  font-family: var(--bsr-font-body);
+}
+.bsr-app--collapsed { grid-template-columns: 84px 1fr; }
+
+.bsr-app-skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: var(--bsr-z-toast);
+  background: var(--bsr-blue); color: var(--bsr-text-on-accent);
+  padding: 0.6rem 1rem; border-radius: 0 0 var(--bsr-radius-sm) 0; font-weight: 600; font-size: 0.85rem;
+}
+.bsr-app-skip-link:focus { left: 0; }
+
+/* ============================= Sidebar ============================= */
+
+.bsr-app-sidebar {
+  width: 264px;
+  display: flex; flex-direction: column;
+  background: var(--bsr-surface);
+  border-right: 1px solid var(--bsr-border);
+  position: sticky; top: 0; height: 100vh;
+  transition: width var(--bsr-duration-base) var(--bsr-ease-standard);
+  overflow-x: hidden;
+}
+.bsr-app--collapsed .bsr-app-sidebar { width: 84px; }
+
+.bsr-app-sidebar__brand {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 1.1rem 1rem; border-bottom: 1px solid var(--bsr-border); flex-shrink: 0;
+}
+.bsr-app--collapsed .bsr-app-sidebar__brand { flex-direction: column; gap: 0.6rem; padding: 1rem 0.5rem; }
+.bsr-app-sidebar__brand-link { display: flex; align-items: center; gap: 0.65rem; text-decoration: none; min-width: 0; }
+.bsr-app-sidebar__brand-link:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 3px; border-radius: 4px; }
+.bsr-app-sidebar__wordmark {
+  font-family: var(--bsr-font-display); font-weight: 700; font-size: 1rem; letter-spacing: 0.08em; color: var(--bsr-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.bsr-app-sidebar__nav { flex: 1; padding: 1rem 0.75rem; display: flex; flex-direction: column; gap: 1.35rem; overflow-y: auto; }
+.bsr-app-sidebar__group { display: flex; flex-direction: column; gap: 0.15rem; }
+.bsr-app-sidebar__group-label { display: block; padding: 0 0.65rem; margin-bottom: 0.4rem; color: var(--bsr-text-faint); }
+.bsr-app--collapsed .bsr-app-sidebar__group-label { display: none; }
+
+.bsr-app-nav-link {
+  display: flex; align-items: center; gap: 0.75rem; min-height: 44px;
+  padding: 0.55rem 0.7rem; border-radius: var(--bsr-radius-md);
+  color: var(--bsr-text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500;
+  position: relative;
+  transition: background-color var(--bsr-duration-fast) var(--bsr-ease-standard), color var(--bsr-duration-fast) var(--bsr-ease-standard);
+}
+.bsr-app-nav-link:hover { background: var(--bsr-elevated); color: var(--bsr-text); }
+.bsr-app-nav-link:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 2px; }
+.bsr-app-nav-link--active { background: var(--bsr-blue-soft); color: var(--bsr-blue); font-weight: 600; }
+.bsr-app-nav-link--active::before {
+  content: ""; position: absolute; left: -0.75rem; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 20px; background: var(--bsr-blue); border-radius: 0 3px 3px 0;
+}
+.bsr-app-nav-link__icon { flex-shrink: 0; width: 20px; height: 20px; }
+.bsr-app--collapsed .bsr-app-nav-link { justify-content: center; padding: 0.6rem; position: relative; }
+/* The active bar's -0.75rem offset would sit right at (or past) the collapsed
+   84px rail's edge, which `.bsr-app-sidebar`'s `overflow-x: hidden` clips --
+   pull it back inside the link's own box so the non-color active indicator
+   (not just the background tint) stays visible when collapsed. */
+.bsr-app--collapsed .bsr-app-nav-link--active::before { left: 0.1rem; }
+
+/* Collapsed-rail tooltip: `aria-label` on the link already gives it a real
+   accessible name (title-only names are unreliable with screen readers).
+   This is purely the sighted-user affordance, shown on both mouse hover and
+   keyboard focus. Portaled to document.body (see Layout.tsx) and positioned
+   via getBoundingClientRect rather than CSS `position:absolute` on the link
+   itself -- `.bsr-app-sidebar__nav`'s `overflow-y: auto` would force the
+   computed overflow-x to `auto` too per the CSS overflow spec (mixing
+   `visible` with a scrolling value on the other axis isn't allowed), which
+   would silently clip anything trying to escape rightward past the 84px
+   rail into the main content area. */
+.bsr-app-sidebar-tooltip {
+  position: fixed; transform: translateY(-50%);
+  background: var(--bsr-elevated); color: var(--bsr-text); border: 1px solid var(--bsr-border-strong);
+  padding: 0.35rem 0.65rem; border-radius: var(--bsr-radius-sm); font-size: 0.78rem; font-weight: 500;
+  white-space: nowrap; box-shadow: var(--bsr-shadow-md);
+  pointer-events: none; z-index: var(--bsr-z-dropdown);
+}
+
+.bsr-app-sidebar__foot { padding: 1rem 0.75rem 1.25rem; border-top: 1px solid var(--bsr-border); display: flex; flex-direction: column; gap: 0.85rem; flex-shrink: 0; }
+.bsr-app-sidebar__landing-link {
+  display: flex; align-items: center; gap: 0.75rem; min-height: 44px;
+  padding: 0.55rem 0.7rem; border-radius: var(--bsr-radius-md);
+  color: var(--bsr-text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+  transition: background-color var(--bsr-duration-fast) var(--bsr-ease-standard), color var(--bsr-duration-fast) var(--bsr-ease-standard);
+}
+.bsr-app-sidebar__landing-link:hover { background: var(--bsr-elevated); color: var(--bsr-blue); }
+.bsr-app-sidebar__landing-link:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 2px; }
+.bsr-app--collapsed .bsr-app-sidebar__landing-link { justify-content: center; }
+.bsr-app-sidebar__status { padding: 0 0.65rem; display: flex; flex-direction: column; gap: 0.45rem; }
+.bsr-app-sidebar__status p { color: var(--bsr-text-faint); margin: 0; }
+
+/* ============================= Header / body ============================= */
+
+.bsr-app-body { display: flex; flex-direction: column; min-width: 0; }
+
+.bsr-app-header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem clamp(1.25rem, 3vw, 2rem);
+  background: rgba(8, 18, 37, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--bsr-border);
+  position: sticky; top: 0; z-index: var(--bsr-z-sticky);
+}
+/* Scoped under .bsr-app-header (0,2,0) rather than the bare class (0,1,0)
+   -- a bare single-class "display:none" tied on specificity with ui-kit.css's
+   .bsr-icon-btn (also 0,1,0) in Phase 2.1 and silently lost depending on
+   CSS import order. This wins regardless of order. */
+.bsr-app-header .bsr-app-header__menu-btn { display: none; flex-shrink: 0; }
+.bsr-app-header__title { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.bsr-app-header__title h1 { color: var(--bsr-text); }
+.bsr-app-header__context { color: var(--bsr-text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bsr-app-header__badge { margin-left: auto; flex-shrink: 0; }
+
+.bsr-app-main { flex: 1; padding: clamp(1.5rem, 3vw, 2.5rem); max-width: 1440px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+
+.bsr-app-footer {
+  padding: 1.25rem clamp(1.25rem, 3vw, 2rem); text-align: center;
+  color: var(--bsr-text-faint); font-size: 0.78rem; border-top: 1px solid var(--bsr-border);
+}
+
+/* ============================= Mobile drawer (extends ui/Modal) ============================= */
+
+.bsr-app-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; margin: 0;
+  width: 82vw; max-width: 300px; height: 100%; max-height: 100%;
+  border-radius: 0; border-top: none; border-bottom: none; border-left: none;
+  display: flex; flex-direction: column; padding: 1rem 0.9rem;
+  animation: bsr-app-drawer-in var(--bsr-duration-base) var(--bsr-ease-emphasized);
+}
+@keyframes bsr-app-drawer-in {
+  from { transform: translateX(-100%); opacity: 0.7; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.bsr-app-drawer__head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--bsr-border); flex-shrink: 0; }
+.bsr-app-drawer__brand { display: flex; align-items: center; gap: 0.65rem; }
+.bsr-app-drawer__nav { display: flex; flex-direction: column; gap: 1.35rem; flex: 1; overflow-y: auto; }
+.bsr-app-drawer .bsr-app-sidebar__landing-link { margin-top: 0.75rem; flex-shrink: 0; }
+
+/* ============================= Responsive ============================= */
+
+@media (max-width: 960px) {
+  .bsr-app { grid-template-columns: 1fr; }
+  .bsr-app-sidebar { display: none; }
+  .bsr-app-header .bsr-app-header__menu-btn { display: inline-flex; }
+}
+@media (max-width: 560px) {
+  /* Same specificity-tie issue as the menu-btn rule above: `.bsr-status-pill`
+     in ui-kit.css also sets `display` at (0,1,0) and loads after this file,
+     so a bare `.bsr-app-header__badge { display: none }` here silently lost
+     and the badge stayed visible, overlapping the title. */
+  .bsr-app-header .bsr-app-header__badge { display: none; }
+}

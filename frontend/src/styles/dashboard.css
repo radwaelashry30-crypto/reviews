@@ -1,0 +1,99 @@
+/**
+ * Baseera main DashboardPage (Phase 3A). Built on Phase 1 `--bsr-*` tokens
+ * and `ui/` components. Scoped to `.bsr-dash` so nothing here reaches the
+ * other, not-yet-reskinned pages that still render inside the same
+ * <Layout>/<Outlet>.
+ *
+ * `.bsr-dash` also re-points the *legacy* CSS variable names (`--text`,
+ * `--text-muted`, `--text-faint`, `--bg-elevated`, `--border`, `--border-
+ * strong`? no such legacy name, `--shadow-card`, `--radius-sm`, `--bg`) at
+ * their Baseera equivalents. Those are exactly the variables the *shared*
+ * `ChartTooltip` and `SegmentChart`'s `<Legend>` read -- both stay
+ * unmodified (Customers/Sentiment/etc. still use them as they were), but
+ * inside this page only, their text/tooltip chrome now resolves to the new
+ * navy/blue palette instead of the old warm one. Their hard-coded slice
+ * fill colors (from `utils/chartColors.ts`) aren't CSS-driven and stay the
+ * old amber scale here -- a known, disclosed limit of not touching a file
+ * shared with the Customers page.
+ */
+.bsr-dash {
+  --text: var(--bsr-text);
+  --text-muted: var(--bsr-text-muted);
+  --text-faint: var(--bsr-text-faint);
+  --bg: var(--bsr-bg);
+  --bg-elevated: var(--bsr-elevated);
+  --border: var(--bsr-border);
+  --shadow-card: var(--bsr-shadow-sm);
+  --radius-sm: var(--bsr-radius-sm);
+
+  color: var(--bsr-text);
+  font-family: var(--bsr-font-body);
+}
+
+.bsr-dash-intro { display: flex; flex-direction: column; gap: var(--bsr-space-2); max-width: 68ch; margin-bottom: var(--bsr-space-7); }
+.bsr-dash-intro__eyebrow { color: var(--bsr-gold); }
+.bsr-dash-intro h1 { margin-top: 0.1rem; color: var(--bsr-text); }
+.bsr-dash-intro p.bsr-body-lg { color: var(--bsr-text-muted); }
+.bsr-dash-intro__badge { margin-top: var(--bsr-space-3); }
+/* The app header already carries the same "Historical Olist data · Jan 2017
+   – Aug 2018" badge (Layout.tsx) at widths where it's visible -- showing it
+   again here would be a duplicate status indicator on the same screen. The
+   header hides its badge below 561px (app-shell.css) specifically so this
+   one becomes the single visible disclosure on mobile; mirror that
+   threshold here so exactly one is ever showing per viewport, and the exact
+   date range is always visible in whichever one remains. */
+@media (min-width: 561px) {
+  /* Same specificity tie as the header-badge fix in app-shell.css:
+     `.bsr-status-pill` in ui-kit.css also sets `display` at (0,1,0) and
+     loads after this file, so a bare single-class selector here silently
+     lost and the badge stayed visible, duplicating the header's. */
+  .bsr-dash-intro .bsr-dash-intro__badge { display: none; }
+}
+
+/* ---------- Primary metrics ---------- */
+
+.bsr-dash-kpis-section { margin-bottom: var(--bsr-space-7); }
+/* 3 columns x 2 rows on wide desktop -- deliberately roomier than a single
+   compressed row of 6, per the "premium, not squeezed" direction. The KPI
+   values are now compact-formatted (see formatCurrencyCompact), so 2
+   columns stays comfortably readable down to mobile widths too. */
+.bsr-dash-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bsr-space-4); }
+.bsr-dash-kpi { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.bsr-dash-kpi__value {
+  font-size: clamp(1.6rem, 2.6vw, 2.4rem); font-weight: 700; color: var(--bsr-text); line-height: 1.05;
+  cursor: default;
+  /* Belt-and-suspenders: values are compact-formatted now (never a long
+     unbroken token like the old "R$15,422,462.00"), but this still guards
+     against the grid track being forced wider than the viewport if a
+     future metric ever produces an unexpectedly long single token. */
+  overflow-wrap: anywhere;
+}
+.bsr-dash-kpi__label { color: var(--bsr-text-faint); }
+@media (max-width: 900px) { .bsr-dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 340px) { .bsr-dash-kpis { grid-template-columns: 1fr; } }
+
+/* ---------- Main analytical view ---------- */
+
+.bsr-dash-analytics { display: grid; grid-template-columns: 1.6fr 1fr; gap: var(--bsr-space-5); margin-bottom: var(--bsr-space-7); align-items: stretch; }
+.bsr-dash-hero-panel {
+  box-shadow: var(--bsr-shadow-md), inset 0 0 0 1px rgba(244, 185, 66, 0.08);
+}
+.bsr-dash-secondary-panel { display: flex; flex-direction: column; }
+@media (max-width: 1100px) { .bsr-dash-analytics { grid-template-columns: 1fr; } }
+
+.bsr-dash-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--bsr-space-3); margin-bottom: var(--bsr-space-4); }
+.bsr-dash-panel-head h2, .bsr-dash-panel-head h3 { color: var(--bsr-text); margin-top: 0.15rem; }
+.bsr-dash-panel-head .bsr-label { color: var(--bsr-text-faint); }
+
+/* ---------- Supporting insights ---------- */
+
+.bsr-dash-group-header { margin-top: var(--bsr-space-2); margin-bottom: var(--bsr-space-4); }
+.bsr-dash-insight-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--bsr-space-5); margin-bottom: var(--bsr-space-6); }
+@media (max-width: 900px) { .bsr-dash-insight-row { grid-template-columns: 1fr; } }
+
+.bsr-dash-full-panel { margin-bottom: var(--bsr-space-5); }
+
+/* Mobile "Showing top N of X" note above Top Cities / Top Categories when
+   the chart trims its visible bar count for legibility -- the underlying
+   ranking and dataset are untouched, this only labels what's on screen. */
+.bsr-dash-chart-note { color: var(--bsr-text-faint); margin: 0 0 var(--bsr-space-2); }

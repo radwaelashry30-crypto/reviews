@@ -1,6 +1,6 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { GOLD_SCALE } from "../../utils/chartColors";
-import { ChartTooltip } from "./ChartTooltip";
+import { BLUE_SCALE } from "./dashboard/dashboardChartColors";
+import { DashboardChartTooltip } from "./dashboard/DashboardChartTooltip";
 
 const LABELS: Record<string, string> = {
   credit_card: "Credit Card", boleto: "Boleto", voucher: "Voucher", debit_card: "Debit Card", not_defined: "Not Defined",
@@ -15,11 +15,11 @@ export function PaymentDistributionChart({ data }: { data: Record<string, number
       <PieChart>
         <Pie data={rows} dataKey="count" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={95} paddingAngle={2}>
           {rows.map((row, idx) => (
-            <Cell key={row.name} fill={GOLD_SCALE[idx % GOLD_SCALE.length]} stroke="var(--bg)" strokeWidth={2} />
+            <Cell key={row.name} fill={BLUE_SCALE[idx % BLUE_SCALE.length]} stroke="var(--bsr-bg)" strokeWidth={2} />
           ))}
         </Pie>
-        <Tooltip content={<ChartTooltip valueLabel="orders" />} />
-        <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }} />
+        <Tooltip content={<DashboardChartTooltip valueLabel="orders" />} />
+        <Legend wrapperStyle={{ fontSize: 12, color: "var(--bsr-text-muted)" }} />
       </PieChart>
     </ResponsiveContainer>
   );

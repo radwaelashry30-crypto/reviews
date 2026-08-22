@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as sentimentApi from "../api/sentimentApi";
 import { ApiClientError } from "../types/api";
 import type {
@@ -124,6 +124,13 @@ export function useFileUpload() {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(true);
   const [error, setError] = useState<ApiClientError | null>(null);
+  // Wall-clock time for the request as measured in this browser -- NOT a
+  // backend-reported field. The backend does emit a real `x-process-time-ms`
+  // response header (see app/main.py's timing middleware), but it isn't in
+  // CORS's Access-Control-Expose-Headers, so cross-origin JS can't read it;
+  // this is measured client-side instead and must be labeled as such in the UI.
+  const [durationMs, setDurationMs] = useState<number | null>(null);
+  const lastArgsRef = useRef<{ file: File; modelName: ModelName; advanced: boolean } | null>(null);
 
   useEffect(() => {
     const savedId = localStorage.getItem(LAST_UPLOAD_ID_KEY);
@@ -139,12 +146,16 @@ export function useFileUpload() {
   }, []);
 
   async function upload(file: File, modelName: ModelName, advanced = false) {
+    lastArgsRef.current = { file, modelName, advanced };
     setLoading(true);
     setError(null);
     setResult(null);
+    setDurationMs(null);
+    const startedAt = performance.now();
     try {
       const data = await sentimentApi.uploadReviewFile(file, modelName, advanced);
       setResult(data);
+      setDurationMs(performance.now() - startedAt);
       if (data.upload_id) localStorage.setItem(LAST_UPLOAD_ID_KEY, data.upload_id);
     } catch (e) {
       setError(e as ApiClientError);
@@ -153,10 +164,26 @@ export function useFileUpload() {
     }
   }
 
+  /** Re-sends the exact same file/settings that produced the current error --
+   * genuine retry, not a re-derived guess. */
+  function retry() {
+    if (lastArgsRef.current) {
+      const { file, modelName, advanced } = lastArgsRef.current;
+      upload(file, modelName, advanced);
+    }
+  }
+
+  function reset() {
+    setResult(null);
+    setError(null);
+    setDurationMs(null);
+    lastArgsRef.current = null;
+  }
+
   function clearSaved() {
     localStorage.removeItem(LAST_UPLOAD_ID_KEY);
     setResult(null);
   }
 
-  return { result, loading: loading || restoring, error, upload, clearSaved };
+  return { result, loading: loading || restoring, error, upload, clearSaved, durationMs, retry, reset };
 }

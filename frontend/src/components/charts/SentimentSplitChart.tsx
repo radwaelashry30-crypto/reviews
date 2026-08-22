@@ -1,6 +1,6 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { CHART_NEGATIVE, CHART_POSITIVE } from "../../utils/chartColors";
-import { ChartTooltip } from "./ChartTooltip";
+import { CHART_NEGATIVE, CHART_POSITIVE } from "./batch/batchChartColors";
+import { BatchChartTooltip } from "./batch/BatchChartTooltip";
 
 export function SentimentSplitChart({ nPositive, nNegative }: { nPositive: number; nNegative: number }) {
   const rows = [
@@ -12,11 +12,11 @@ export function SentimentSplitChart({ nPositive, nNegative }: { nPositive: numbe
       <PieChart>
         <Pie data={rows} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3}>
           {rows.map((row) => (
-            <Cell key={row.name} fill={row.color} stroke="var(--bg)" strokeWidth={2} />
+            <Cell key={row.name} fill={row.color} stroke="var(--bsr-bg)" strokeWidth={2} />
           ))}
         </Pie>
-        <Tooltip content={<ChartTooltip valueLabel="reviews" />} />
-        <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }} />
+        <Tooltip content={<BatchChartTooltip valueLabel="reviews" />} />
+        <Legend wrapperStyle={{ fontSize: 12, color: "var(--bsr-text-muted)" }} />
       </PieChart>
     </ResponsiveContainer>
   );

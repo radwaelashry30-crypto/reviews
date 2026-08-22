@@ -1,0 +1,143 @@
+/**
+ * Baseera Batch Upload (Phase 3C). Scoped to `.bsr-batch`. All batch-only
+ * components (DropZone, ResultsFilter, RowResults, the 4 batch charts) are
+ * exclusive to this route -- grep-verified before editing.
+ */
+.bsr-batch { color: var(--bsr-text); font-family: var(--bsr-font-body); }
+
+/* ---------- Intro ---------- */
+.bsr-batch-intro { display: flex; flex-direction: column; gap: var(--bsr-space-2); max-width: 72ch; margin-bottom: var(--bsr-space-6); }
+.bsr-batch-intro__eyebrow { color: var(--bsr-gold); }
+.bsr-batch-intro h1 { margin-top: 0.1rem; }
+.bsr-batch-intro__notes { margin-top: var(--bsr-space-3); display: flex; flex-wrap: wrap; gap: var(--bsr-space-2); }
+
+/* ---------- Step layout ---------- */
+.bsr-batch-step { margin-bottom: var(--bsr-space-6); }
+.bsr-batch-step-head { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: var(--bsr-space-3); }
+.bsr-batch-step-head__number {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--bsr-blue-soft); color: var(--bsr-blue); font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+}
+
+.bsr-batch-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: var(--bsr-space-6); align-items: start; }
+@media (max-width: 960px) { .bsr-batch-workspace { grid-template-columns: minmax(0, 1fr); } }
+
+.bsr-batch-panel { padding: var(--bsr-space-6); }
+
+/* ---------- Schema guide ---------- */
+.bsr-batch-schema-table { width: 100%; border-collapse: collapse; margin-top: var(--bsr-space-3); font-size: 0.85rem; }
+.bsr-batch-schema-table th, .bsr-batch-schema-table td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--bsr-border); }
+.bsr-batch-schema-table th { color: var(--bsr-text-faint); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+.bsr-batch-schema-table td.bsr-mono { font-size: 0.82rem; }
+
+/* ---------- Settings ---------- */
+.bsr-batch-settings { display: flex; flex-direction: column; gap: var(--bsr-space-4); }
+.bsr-batch-settings__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--bsr-space-3); }
+@media (max-width: 520px) { .bsr-batch-settings__row { grid-template-columns: 1fr; } }
+.bsr-batch-field-label { display: flex; flex-direction: column; gap: 0.4rem; color: var(--bsr-text-muted); font-size: 0.85rem; font-weight: 500; min-width: 0; }
+.bsr-batch-select {
+  min-height: 44px; width: 100%; max-width: 100%; background: var(--bsr-elevated); color: var(--bsr-text); font-family: inherit; font-size: 0.9rem;
+  border: 1px solid var(--bsr-border); border-radius: var(--bsr-radius-sm); padding: 0 0.7rem;
+  /* A disabled <option> (e.g. "BERT ... -- unavailable on this deployment")
+     can otherwise set the closed <select>'s intrinsic width to its own long
+     text in Chromium, blowing out the mobile layout even though the select
+     itself never displays that full string while closed. */
+  box-sizing: border-box;
+}
+.bsr-batch-select:disabled { opacity: 0.5; }
+.bsr-batch-checkbox-row { display: flex; align-items: flex-start; gap: 0.6rem; color: var(--bsr-text-muted); font-size: 0.85rem; }
+.bsr-batch-checkbox-row input { width: 18px; height: 18px; margin-top: 0.15rem; accent-color: var(--bsr-blue); flex-shrink: 0; }
+
+/* ---------- Drop zone ---------- */
+.bsr-batch-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem;
+  text-align: center; padding: var(--bsr-space-7) var(--bsr-space-5); min-height: 200px;
+  border: 1.5px dashed var(--bsr-border-strong); border-radius: var(--bsr-radius-lg);
+  background: var(--bsr-bg); cursor: pointer; color: var(--bsr-text-muted);
+  transition: border-color var(--bsr-duration-fast) var(--bsr-ease-standard), background var(--bsr-duration-fast) var(--bsr-ease-standard);
+}
+.bsr-batch-dropzone:hover { border-color: var(--bsr-blue-border); background: var(--bsr-blue-soft); }
+.bsr-batch-dropzone:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 3px; }
+.bsr-batch-dropzone--active { border-color: var(--bsr-blue); background: var(--bsr-blue-soft); }
+.bsr-batch-dropzone--disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+.bsr-batch-dropzone__icon { color: var(--bsr-blue); }
+
+.bsr-batch-file-summary {
+  display: flex; align-items: center; gap: var(--bsr-space-3); flex-wrap: wrap;
+  padding: var(--bsr-space-4) var(--bsr-space-5); border: 1px solid var(--bsr-border); border-radius: var(--bsr-radius-lg); background: var(--bsr-elevated);
+}
+.bsr-batch-file-summary__icon { color: var(--bsr-blue); flex-shrink: 0; }
+.bsr-batch-file-summary__info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
+.bsr-batch-file-summary__name { font-weight: 600; overflow-wrap: anywhere; }
+.bsr-batch-file-summary__actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+.bsr-batch-inline-error { color: var(--bsr-negative); display: flex; align-items: center; gap: 0.4rem; margin-top: var(--bsr-space-2); }
+
+/* ---------- Results ---------- */
+.bsr-batch-results { display: flex; flex-direction: column; gap: var(--bsr-space-6); }
+.bsr-batch-restored-banner {
+  display: flex; align-items: center; gap: var(--bsr-space-3); flex-wrap: wrap;
+  padding: var(--bsr-space-3) var(--bsr-space-4); border-radius: var(--bsr-radius-md);
+  background: var(--bsr-gold-soft); border: 1px solid var(--bsr-gold-border); color: var(--bsr-text-muted);
+}
+
+.bsr-batch-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--bsr-space-4); }
+@media (max-width: 900px) { .bsr-batch-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .bsr-batch-kpis { grid-template-columns: 1fr; } }
+.bsr-batch-kpi { display: flex; flex-direction: column; gap: 0.4rem; }
+.bsr-batch-kpi__value { font-size: clamp(1.3rem, 2vw, 1.8rem); font-weight: 700; overflow-wrap: anywhere; }
+.bsr-batch-kpi__label { color: var(--bsr-text-faint); }
+.bsr-batch-kpi__sub { color: var(--bsr-text-faint); font-size: 0.75rem; margin-top: 0.1rem; }
+
+.bsr-batch-chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--bsr-space-5); }
+@media (max-width: 900px) { .bsr-batch-chart-grid { grid-template-columns: 1fr; } }
+
+.bsr-batch-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--bsr-space-3); margin-bottom: var(--bsr-space-3); flex-wrap: wrap; }
+
+.bsr-batch-tokens { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+.bsr-batch-token-chip { display: inline-flex; align-items: center; padding: 0.3rem 0.6rem; border-radius: var(--bsr-radius-sm); border: 1px solid; font-size: 0.85rem; }
+
+/* ---------- Filter bar ---------- */
+.bsr-batch-filter { display: flex; align-items: center; gap: var(--bsr-space-3); flex-wrap: wrap; margin-bottom: var(--bsr-space-4); }
+.bsr-batch-filter__search {
+  display: flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0 0.8rem;
+  border: 1px solid var(--bsr-border); border-radius: var(--bsr-radius-md); background: var(--bsr-bg); color: var(--bsr-text-faint);
+  flex: 1; min-width: 180px; max-width: 320px;
+}
+.bsr-batch-filter__search:focus-within { border-color: var(--bsr-blue); }
+.bsr-batch-filter__search input { border: none; background: none; color: var(--bsr-text); font-size: 0.88rem; flex: 1; min-width: 0; outline: none; }
+.bsr-batch-filter__select select {
+  min-height: 40px; background: var(--bsr-bg); color: var(--bsr-text); border: 1px solid var(--bsr-border);
+  border-radius: var(--bsr-radius-md); padding: 0 0.7rem; font-size: 0.88rem;
+}
+.bsr-batch-filter__count { color: var(--bsr-text-faint); }
+
+/* ---------- Desktop table ---------- */
+.bsr-batch-table-wrap { overflow-x: auto; }
+.bsr-batch-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.bsr-batch-table th, .bsr-batch-table td { text-align: left; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--bsr-border); vertical-align: top; }
+.bsr-batch-table th { color: var(--bsr-text-faint); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+.bsr-batch-table__text { max-width: 480px; line-height: 1.5; }
+.bsr-batch-row-expand { background: none; border: none; color: var(--bsr-blue); font-size: 0.82rem; cursor: pointer; padding: 0; text-decoration: underline; }
+.bsr-batch-row-expand:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 2px; }
+
+@media (max-width: 900px) { .bsr-batch-table-wrap { display: none; } }
+
+/* ---------- Mobile cards ---------- */
+.bsr-batch-card-list { display: none; list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 0.6rem; }
+@media (max-width: 900px) { .bsr-batch-card-list { display: flex; } }
+.bsr-batch-card { border: 1px solid var(--bsr-border); border-radius: var(--bsr-radius-md); background: var(--bsr-elevated); overflow: hidden; }
+.bsr-batch-card__head {
+  display: flex; align-items: center; gap: var(--bsr-space-3); width: 100%; min-height: 44px;
+  padding: 0.7rem 0.9rem; background: none; border: none; color: var(--bsr-text); cursor: pointer; text-align: left;
+}
+.bsr-batch-card__head:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: -2px; }
+.bsr-batch-card__chevron { margin-left: auto; transition: transform var(--bsr-duration-fast) var(--bsr-ease-standard); flex-shrink: 0; }
+.bsr-batch-card__chevron--open { transform: rotate(180deg); }
+.bsr-batch-card__body { padding: 0 0.9rem 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--bsr-border); padding-top: 0.6rem; margin: 0 0.9rem 0.9rem; }
+
+.bsr-batch-results-actions { display: flex; gap: var(--bsr-space-2); flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bsr-batch-card__chevron { transition: none; }
+}

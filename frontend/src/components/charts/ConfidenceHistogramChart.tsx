@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { FileRowResult } from "../../types/sentiment";
-import { CHART_AXIS, CHART_GRID, GOLD_SCALE } from "../../utils/chartColors";
-import { ChartTooltip } from "./ChartTooltip";
+import { CHART_AXIS, CHART_GOLD, CHART_GRID } from "./batch/batchChartColors";
+import { BatchChartTooltip } from "./batch/BatchChartTooltip";
 
 const BUCKETS = [
   { label: "50-60%", min: 0.5, max: 0.6 },
@@ -22,8 +22,8 @@ export function ConfidenceHistogramChart({ results }: { results: FileRowResult[]
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
         <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART_AXIS }} />
         <YAxis tick={{ fontSize: 11, fill: CHART_AXIS }} allowDecimals={false} />
-        <Tooltip content={<ChartTooltip valueLabel="reviews" />} cursor={{ fill: "rgba(201, 153, 46, 0.06)" }} />
-        <Bar dataKey="count" fill={GOLD_SCALE[0]} radius={[6, 6, 0, 0]} />
+        <Tooltip content={<BatchChartTooltip valueLabel="reviews" />} cursor={{ fill: "rgba(35, 199, 255, 0.06)" }} />
+        <Bar dataKey="count" fill={CHART_GOLD} radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

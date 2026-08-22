@@ -95,9 +95,31 @@ The notebook compared BERT on a 2,000-row subsample against CNN2D on the full 7,
 
 SHAP `PartitionExplainer` over the fine-tuned BERT pipeline, sample size 8 (configurable), explaining rows drawn from the stored split manifest only. `backend/app/ml/explainability.py`; degrades gracefully (reports `available: false`) if `shap` isn't installed rather than crashing.
 
-## 18. Fake-review module (experimental)
+## 18. Fake-review module
 
-`jb10231/fake-review-detector` over negative reviews. The notebook's own run flagged 0/11,407 as fake — documented in `backend/app/ml/fake_review_detection.py` as **not evidence all reviews are genuine** (likely domain shift / calibration, not a validated fraud signal).
+An ensemble (DistilBERT, fine-tuned with a paraphrase-consistency loss + TF-IDF/Logistic
+Regression), replacing two earlier checkpoints that were confirmed unreliable — the
+original `jb10231/fake-review-detector` (label semantics never verified, predictions
+flipped from 99.9% to 0.1% confidence under a pure synonym substitution) and a first
+retrain attempt that failed the same paraphrase-stability test the same way. A candidate
+replacement dataset (a large Amazon "spam/non-spam" corpus) was also rejected before any
+training was attempted, once direct inspection showed its label was a 1:1 proxy for star
+rating, not a genuine spam judgment.
+
+Trained on the Ott et al. Deceptive Opinion Spam Corpus (Cornell, genuinely
+human-verified deceptive-vs-truthful labels). Validated over all 320 held-out test
+reviews (not a handful of examples): 0/300 confidently-wrong verdicts under
+meaning-preserving paraphrasing (95% CI upper bound 1.3%), with predictions close to the
+decision boundary honestly reported as `UNCERTAIN` rather than forced into a guess.
+
+- **Full investigation** (both rejected checkpoints, the rejected dataset, all four
+  training iterations, the statistical validation methodology): [`MODEL_COMPARISON_AUDIT.md` §9](MODEL_COMPARISON_AUDIT.md#9-fake-review-detection-from-an-unreliable-checkpoint-to-a-validated-ensemble-2026-08-19)
+- **Model weights + card, downloadable independently of this repo**: [huggingface.co/RadwaElashry2030/baseera-fake-review-ensemble](https://huggingface.co/RadwaElashry2030/baseera-fake-review-ensemble)
+- Code: `backend/app/ml/fake_review_detection.py`. Off by default (`ENABLE_FAKE_REVIEW_MODULE=false`) — a `FAKE_REVIEW_TFIDF_ONLY` mode exists specifically to fit the module's memory footprint on RAM-constrained free-tier hosts (used on the live deployment).
+
+Honest, unresolved limitation: trained on hotel reviews, applied here to Olist
+e-commerce reviews — a real domain shift, not separately measured (no genuinely-labeled
+Olist fake-review dataset exists to measure it against).
 
 ## 19. ABSA module (experimental)
 

@@ -68,11 +68,20 @@ the same RAKE-based mechanism as the presence gate above, applied per-
 sentence) and scoring just that clause with CNN2D -- the project's own
 binary sentiment classifier, already fully trained, evaluated, and loaded
 in memory for Task 1. Zero additional model weights, zero new dependencies.
-Honest tradeoff: CNN2D is binary (Positive/Negative), so this has no
-"Neutral" class the way the DeBERTa model did, and clause-level sentiment is
-an approximation of aspect-level sentiment, not a purpose-trained one --
-stated explicitly in `methodology_note` below rather than presented as
-equivalent to a dedicated ABSA model.
+Honest tradeoff: clause-level sentiment is an approximation of aspect-level
+sentiment, not a purpose-trained ABSA model -- stated explicitly in
+`methodology_note` below.
+
+THIRD CHANGE (found via live testing after shipping the fix above): CNN2D
+was trained on full review texts, not short isolated clauses -- on a
+genuinely correctly-isolated but very short clause ("but the packaging was
+crushed.", 5 words), its confidence landed at 50.3% Positive, a near-random
+call it presented with the same confident-looking label as a 98% call.
+`_Cnn2dAspectSentiment` now reports "Neutral" for any prediction within
+`UNCERTAIN_MARGIN` of 0.5, the same honest-uncertainty pattern used for the
+fake-review ensemble's UNCERTAIN band (see fake_review_detection.py) --
+this also fills the "no Neutral class" gap the binary model otherwise has,
+rather than just disclaiming it.
 """
 from __future__ import annotations
 
@@ -142,6 +151,17 @@ class _Cnn2dAspectSentiment:
     changes. Internally: locate the aspect's sentence (RAKE), score it with
     the already-loaded CNN2D model -- see module docstring."""
 
+    # Below this margin around 0.5, CNN2D's confidence on a short isolated
+    # clause is close enough to a coin flip that presenting it as a
+    # confident Positive/Negative would overstate it. Found by testing this
+    # exact scenario live: "but the packaging was crushed." (a real,
+    # correctly-isolated clause -- not a splitting bug) scored 50.3% Positive,
+    # a near-random call on a 5-word clause CNN2D was never trained on in
+    # isolation (its training data is full review texts, not single short
+    # clauses). Reported as Neutral instead -- an honest use for the class
+    # CNN2D otherwise has no direct signal for, not a guess either way.
+    UNCERTAIN_MARGIN = 0.08
+
     def __init__(self, cnn_model, cnn_tokenizer, device):
         self.cnn_model = cnn_model
         self.cnn_tokenizer = cnn_tokenizer
@@ -159,6 +179,9 @@ class _Cnn2dAspectSentiment:
             seq = encode_texts_for_cnn([clause], self.cnn_tokenizer, max_len=100)
             tensor = torch.tensor(seq, dtype=torch.long, device=self.device)
             prob_positive = float(torch.sigmoid(self.cnn_model(tensor))[0])
+
+        if abs(prob_positive - 0.5) < self.UNCERTAIN_MARGIN:
+            return [{"label": "Neutral", "score": prob_positive}]
         label = "Positive" if prob_positive >= 0.5 else "Negative"
         score = prob_positive if label == "Positive" else 1.0 - prob_positive
         return [{"label": label, "score": score}]
@@ -201,9 +224,11 @@ def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) ->
             "if RAKE keyphrase extraction finds the review's own text actually discussing it "
             "(domain-general presence check, not a fixed keyword search); otherwise it's reported "
             "as \"Not mentioned\" rather than guessed. The score itself comes from CNN2D (the "
-            "project's own binary sentiment classifier) run over just the located sentence, not a "
-            "purpose-trained ABSA model -- there is no \"Neutral\" class, and clause-level sentiment "
-            "is an approximation of aspect-level sentiment. See app/ml/absa.py module docstring."
+            "project's own binary sentiment classifier) run over just the located clause, not a "
+            "purpose-trained ABSA model -- clause-level sentiment is an approximation of "
+            "aspect-level sentiment. Predictions close to CNN2D's 50% decision boundary (common on "
+            "very short clauses, which the model wasn't trained on directly) are reported as "
+            "\"Neutral\" rather than a forced, overconfident-looking call. See app/ml/absa.py module docstring."
         ),
     }
 
@@ -273,7 +298,8 @@ def run_absa(
             "This is sentiment-given-aspect over a fixed candidate aspect list. Each aspect is "
             "gated behind RAKE-based keyphrase extraction (domain-general presence check, see "
             "app/ml/aspect_extraction.py), not a fixed keyword search. The score itself comes from "
-            "CNN2D over the located aspect sentence, not a purpose-trained ABSA model -- no "
-            "\"Neutral\" class. Olist reviews have no manually annotated aspect labels."
+            "CNN2D over the located aspect clause, not a purpose-trained ABSA model; predictions "
+            "close to its 50% decision boundary are reported as \"Neutral\" rather than a forced "
+            "call. Olist reviews have no manually annotated aspect labels."
         ),
     }

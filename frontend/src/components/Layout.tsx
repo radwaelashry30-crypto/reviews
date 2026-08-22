@@ -45,7 +45,7 @@ const PAGE_META: Record<string, { title: string; context: string }> = {
   "/": { title: "Overview", context: "Marketplace performance across orders, revenue, customers, and reviews." },
   "/sentiment": { title: "Review Analyzer", context: "Score a single review's sentiment, aspects, and confidence." },
   "/batch-upload": { title: "Batch Upload", context: "Analyze a CSV of reviews in one pass." },
-  "/customers": { title: "Customers", context: "Customer segments and top cities." },
+  "/customers": { title: "Customers", context: "Spend, repeat-purchase, and RFM segmentation." },
   "/sellers": { title: "Sellers", context: "Seller performance and delivery reliability." },
   "/products": { title: "Products", context: "Category performance by revenue." },
   "/geography": { title: "Geography", context: "State-level delivery performance." },

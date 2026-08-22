@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { useFeedback } from "../hooks/useSentiment";
+import { Button } from "./ui/Button";
+import { StatusPill } from "./ui/Badge";
 import type { SentimentPrediction } from "../types/sentiment";
 import { formatPercent } from "../utils/formatters";
 
@@ -14,63 +16,68 @@ export function SentimentResult({ result, analysisId }: { result: SentimentPredi
   }, [analysisId]);
 
   return (
-    <div className={`sentiment-result ${isPositive ? "positive" : "negative"}`}>
-      <div className="sentiment-result-label">
-        {isPositive ? "▲" : "▼"} {result.label}
-      </div>
-      <div className="sentiment-result-confidence">
-        {formatPercent(result.confidence * 100)} confidence
-      </div>
-
-      <div className="sentiment-result-probs">
-        <div className="prob-bar-row">
-          <span style={{ width: 56 }}>Positive</span>
-          <div className="prob-bar-track">
-            <div className="prob-bar-fill positive" style={{ width: `${result.probability_positive * 100}%` }} />
-          </div>
-          <span style={{ width: 40, textAlign: "right" }}>{formatPercent(result.probability_positive * 100, 0)}</span>
-        </div>
-        <div className="prob-bar-row">
-          <span style={{ width: 56 }}>Negative</span>
-          <div className="prob-bar-track">
-            <div className="prob-bar-fill negative" style={{ width: `${result.probability_negative * 100}%` }} />
-          </div>
-          <span style={{ width: 40, textAlign: "right" }}>{formatPercent(result.probability_negative * 100, 0)}</span>
-        </div>
+    <div className="bsr-sentiment-verdict">
+      <div className="bsr-sentiment-verdict__head">
+        <span className="bsr-sentiment-verdict__label">
+          <StatusPill tone={isPositive ? "positive" : "negative"}>
+            {isPositive ? "▲ Positive" : "▼ Negative"}
+          </StatusPill>
+        </span>
+        <span className="bsr-sm bsr-sentiment-verdict__confidence">
+          <strong>{formatPercent(result.confidence * 100)}</strong> model confidence
+        </span>
       </div>
 
-      <div className="sentiment-result-meta">
-        Model: {result.model_name} {result.translated && "· translated before analysis"}
+      <div className="bsr-sentiment-probs" role="group" aria-label="Class probability distribution">
+        <div className="bsr-sentiment-prob-row">
+          <span className="bsr-sentiment-prob-row__label">Positive</span>
+          <div className="bsr-sentiment-prob-track">
+            <div className="bsr-sentiment-prob-fill bsr-sentiment-prob-fill--positive" style={{ width: `${result.probability_positive * 100}%` }} />
+          </div>
+          <span className="bsr-sentiment-prob-row__value">{formatPercent(result.probability_positive * 100, 0)}</span>
+        </div>
+        <div className="bsr-sentiment-prob-row">
+          <span className="bsr-sentiment-prob-row__label">Negative</span>
+          <div className="bsr-sentiment-prob-track">
+            <div className="bsr-sentiment-prob-fill bsr-sentiment-prob-fill--negative" style={{ width: `${result.probability_negative * 100}%` }} />
+          </div>
+          <span className="bsr-sentiment-prob-row__value">{formatPercent(result.probability_negative * 100, 0)}</span>
+        </div>
       </div>
+
+      <p className="bsr-caption bsr-sentiment-meta">
+        Model: {result.model_name}
+        {result.translated && " · translated before analysis"}
+      </p>
 
       {analysisId && (
-        <div className="sentiment-feedback">
+        <div className="bsr-sentiment-feedback">
           {feedback.submitted ? (
-            <span className="limitations-note">Thanks for the feedback.</span>
+            <span className="bsr-sm">Thanks for the feedback.</span>
           ) : (
             <>
-              <span className="sentiment-feedback-prompt">Was this right?</span>
-              <button
+              <span className="bsr-sm bsr-sentiment-feedback__prompt">Was this right?</span>
+              <Button
                 type="button"
-                className="feedback-btn"
+                variant="ghost"
                 disabled={feedback.loading}
                 onClick={() => feedback.submit(analysisId, true)}
                 aria-label="Prediction was correct"
               >
                 Correct
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="feedback-btn"
+                variant="ghost"
                 disabled={feedback.loading}
                 onClick={() => feedback.submit(analysisId, false)}
                 aria-label="Prediction was wrong"
               >
                 Wrong
-              </button>
+              </Button>
             </>
           )}
-          {feedback.error && <span className="state state-error">Couldn't save feedback.</span>}
+          {feedback.error && <span className="bsr-sm" style={{ color: "var(--bsr-negative)" }}>Couldn't save feedback.</span>}
         </div>
       )}
     </div>

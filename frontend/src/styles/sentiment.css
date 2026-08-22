@@ -1,0 +1,154 @@
+/**
+ * Baseera Review Analyzer (Phase 3B). Scoped to `.bsr-sentiment` so nothing
+ * here reaches the other, not-yet-reskinned pages. Every component this
+ * page renders (SentimentForm, SentimentResult, AspectsBreakdown,
+ * FakeCheckBadge, ExplanationCard) is exclusive to this route -- grep-
+ * verified before editing -- so unlike DashboardPage there's no shared
+ * component whose legacy CSS vars need remapping here.
+ */
+.bsr-sentiment { color: var(--bsr-text); font-family: var(--bsr-font-body); }
+/* Belt-and-suspenders alongside the grid fix below: env-var names and
+   filenames in the honest "not loaded on this deployment" / disclaimer
+   copy (e.g. `ALLOW_EXTERNAL_MODEL_DOWNLOADS=false`, `MODEL_COMPARISON_
+   AUDIT.md`) are long unbroken tokens that should never force layout width. */
+.bsr-sentiment p, .bsr-sentiment code { overflow-wrap: anywhere; }
+
+/* ---------- Intro ---------- */
+.bsr-sentiment-intro { display: flex; flex-direction: column; gap: var(--bsr-space-2); max-width: 72ch; margin-bottom: var(--bsr-space-6); }
+.bsr-sentiment-intro__eyebrow { color: var(--bsr-gold); }
+.bsr-sentiment-intro h1 { margin-top: 0.1rem; color: var(--bsr-text); }
+.bsr-sentiment-intro p.bsr-body-lg { color: var(--bsr-text-muted); }
+.bsr-sentiment-intro__notes { margin-top: var(--bsr-space-3); display: flex; flex-wrap: wrap; gap: var(--bsr-space-2); }
+
+/* ---------- Workspace: input | results ---------- */
+.bsr-sentiment-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--bsr-space-6); align-items: start; }
+/* `minmax(0, 1fr)`, not a bare `1fr` -- a plain `1fr` track's minimum width
+   defaults to its content's min-content size, and a single long unbreakable
+   token in the results (e.g. `ALLOW_EXTERNAL_MODEL_DOWNLOADS=false` or
+   `MODEL_COMPARISON_AUDIT.md` in the fake-check disclaimer) would then set
+   that minimum wider than the viewport instead of wrapping -- same class of
+   bug as the dashboard KPI grid in Phase 3A. */
+@media (max-width: 960px) { .bsr-sentiment-workspace { grid-template-columns: minmax(0, 1fr); } }
+
+.bsr-sentiment-panel { padding: var(--bsr-space-6); }
+
+/* Subtle connecting light: a soft blue glow bridging the two columns,
+   suggesting input flows into analysis -- restrained, not a full glow. */
+@media (min-width: 961px) {
+  .bsr-sentiment-workspace::before {
+    content: ""; grid-column: 1 / -1; grid-row: 1; height: 1px; margin-bottom: calc(-1 * var(--bsr-space-6));
+    background: linear-gradient(90deg, transparent, var(--bsr-blue-border), transparent);
+    opacity: 0.5; pointer-events: none;
+  }
+}
+
+/* ---------- Form ---------- */
+.bsr-sentiment-form { display: flex; flex-direction: column; gap: var(--bsr-space-4); }
+.bsr-sentiment-form__field { display: flex; flex-direction: column; gap: 0.5rem; }
+.bsr-sentiment-form__label { color: var(--bsr-text); font-weight: 600; }
+.bsr-sentiment-form__hint { color: var(--bsr-text-faint); }
+
+.bsr-sentiment-textarea {
+  width: 100%; min-height: 190px; resize: vertical; box-sizing: border-box;
+  background: var(--bsr-bg); color: var(--bsr-text); font-family: inherit; font-size: 0.95rem; line-height: 1.6;
+  border: 1px solid var(--bsr-border); border-radius: var(--bsr-radius-md); padding: 0.9rem 1rem;
+  transition: border-color var(--bsr-duration-fast) var(--bsr-ease-standard), box-shadow var(--bsr-duration-fast) var(--bsr-ease-standard);
+}
+.bsr-sentiment-textarea::placeholder { color: var(--bsr-text-faint); }
+.bsr-sentiment-textarea:focus-visible { outline: none; border-color: var(--bsr-blue); box-shadow: 0 0 0 3px var(--bsr-blue-soft); }
+.bsr-sentiment-textarea[aria-invalid="true"] { border-color: var(--bsr-negative-border); }
+
+.bsr-sentiment-textarea-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--bsr-space-3); flex-wrap: wrap; }
+.bsr-sentiment-counter { color: var(--bsr-text-faint); font-variant-numeric: tabular-nums; }
+.bsr-sentiment-counter--near-limit { color: var(--bsr-warning); }
+.bsr-sentiment-counter--at-limit { color: var(--bsr-negative); }
+.bsr-sentiment-validation { color: var(--bsr-negative); display: flex; align-items: center; gap: 0.4rem; }
+
+.bsr-sentiment-form__tools { display: flex; flex-wrap: wrap; gap: var(--bsr-space-2); }
+
+.bsr-sentiment-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--bsr-space-3); }
+@media (max-width: 520px) { .bsr-sentiment-form__row { grid-template-columns: 1fr; } }
+
+.bsr-sentiment-field-label { display: flex; flex-direction: column; gap: 0.4rem; color: var(--bsr-text-muted); font-size: 0.85rem; font-weight: 500; }
+.bsr-sentiment-select {
+  min-height: 44px; background: var(--bsr-elevated); color: var(--bsr-text); font-family: inherit; font-size: 0.9rem;
+  border: 1px solid var(--bsr-border); border-radius: var(--bsr-radius-sm); padding: 0 0.7rem;
+}
+.bsr-sentiment-select:focus-visible { outline: 2px solid var(--bsr-blue); outline-offset: 1px; }
+.bsr-sentiment-select:disabled { opacity: 0.5; }
+
+.bsr-sentiment-checkbox-row {
+  display: flex; align-items: center; gap: 0.6rem; min-height: 44px; color: var(--bsr-text-muted); font-size: 0.85rem;
+  grid-column: 1 / -1;
+}
+.bsr-sentiment-checkbox-row input { width: 18px; height: 18px; accent-color: var(--bsr-blue); }
+.bsr-sentiment-checkbox-row:has(input:disabled) { opacity: 0.5; }
+
+.bsr-sentiment-submit-row { display: flex; justify-content: flex-end; }
+@media (max-width: 520px) { .bsr-sentiment-submit-row .bsr-btn { width: 100%; } }
+
+/* ---------- Results column ---------- */
+.bsr-sentiment-results { display: flex; flex-direction: column; gap: var(--bsr-space-5); }
+.bsr-sentiment-results__actions { display: flex; flex-wrap: wrap; gap: var(--bsr-space-2); }
+
+.bsr-sentiment-empty { padding: var(--bsr-space-7) var(--bsr-space-5); text-align: center; }
+.bsr-sentiment-empty .bsr-empty-state__icon { color: var(--bsr-text-faint); }
+
+/* ---------- Primary sentiment card ---------- */
+.bsr-sentiment-verdict { display: flex; flex-direction: column; gap: var(--bsr-space-4); }
+.bsr-sentiment-verdict__head { display: flex; align-items: center; justify-content: space-between; gap: var(--bsr-space-3); flex-wrap: wrap; }
+.bsr-sentiment-verdict__label { display: flex; align-items: center; gap: 0.6rem; }
+.bsr-sentiment-verdict__label .bsr-status-pill { font-size: 0.95rem; padding: 0.4rem 0.9rem; }
+.bsr-sentiment-verdict__confidence { color: var(--bsr-text-muted); }
+.bsr-sentiment-verdict__confidence strong { color: var(--bsr-text); font-variant-numeric: tabular-nums; }
+
+.bsr-sentiment-probs { display: flex; flex-direction: column; gap: 0.55rem; }
+.bsr-sentiment-prob-row { display: grid; grid-template-columns: 72px 1fr 44px; align-items: center; gap: 0.6rem; }
+.bsr-sentiment-prob-row__label { color: var(--bsr-text-muted); font-size: 0.85rem; }
+.bsr-sentiment-prob-track { height: 8px; border-radius: var(--bsr-radius-full); background: var(--bsr-elevated); overflow: hidden; }
+.bsr-sentiment-prob-fill { height: 100%; border-radius: var(--bsr-radius-full); transition: width var(--bsr-duration-slow) var(--bsr-ease-standard); }
+.bsr-sentiment-prob-fill--positive { background: var(--bsr-positive); }
+.bsr-sentiment-prob-fill--negative { background: var(--bsr-negative); }
+.bsr-sentiment-prob-row__value { text-align: right; font-variant-numeric: tabular-nums; color: var(--bsr-text); font-size: 0.85rem; }
+
+.bsr-sentiment-meta { color: var(--bsr-text-faint); }
+
+.bsr-sentiment-feedback { display: flex; align-items: center; gap: var(--bsr-space-3); flex-wrap: wrap; padding-top: var(--bsr-space-2); border-top: 1px solid var(--bsr-border); }
+.bsr-sentiment-feedback__prompt { color: var(--bsr-text-muted); }
+
+/* ---------- Aspects ---------- */
+.bsr-sentiment-aspects { display: flex; flex-direction: column; gap: var(--bsr-space-3); }
+.bsr-sentiment-aspect-row { display: grid; grid-template-columns: 108px 1fr 96px; align-items: center; gap: var(--bsr-space-3); min-height: 32px; }
+@media (max-width: 480px) { .bsr-sentiment-aspect-row { grid-template-columns: 90px 1fr 80px; gap: 0.6rem; } }
+.bsr-sentiment-aspect-row__name { color: var(--bsr-text); font-weight: 500; text-transform: capitalize; }
+.bsr-sentiment-aspect-row__value { text-align: right; }
+.bsr-sentiment-aspect-track { height: 6px; border-radius: var(--bsr-radius-full); background: var(--bsr-elevated); overflow: hidden; }
+.bsr-sentiment-aspect-fill { height: 100%; border-radius: var(--bsr-radius-full); }
+
+/* ---------- Fake-check ---------- */
+.bsr-sentiment-authenticity { display: flex; flex-direction: column; gap: var(--bsr-space-2); align-items: flex-start; }
+.bsr-sentiment-authenticity__verdict { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.bsr-sentiment-authenticity__details {
+  display: flex; flex-direction: column; gap: 0.5rem; width: 100%;
+  margin-top: 0.25rem; padding-top: var(--bsr-space-3); border-top: 1px solid var(--bsr-border);
+}
+
+/* ---------- Explanation ---------- */
+.bsr-sentiment-tokens { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: var(--bsr-space-3); }
+.bsr-sentiment-token-chip {
+  display: inline-flex; align-items: center; padding: 0.3rem 0.6rem; border-radius: var(--bsr-radius-sm);
+  border: 1px solid; font-size: 0.85rem; font-family: var(--bsr-font-mono);
+}
+
+/* ---------- Section headers inside result cards ---------- */
+.bsr-sentiment-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--bsr-space-3); margin-bottom: var(--bsr-space-3); }
+
+/* ---------- Motion ---------- */
+.bsr-sentiment-fade-in { animation: bsr-sentiment-fade-in var(--bsr-duration-slow) var(--bsr-ease-standard); }
+@keyframes bsr-sentiment-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bsr-sentiment-fade-in { animation: none; }
+}

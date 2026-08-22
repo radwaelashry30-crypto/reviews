@@ -77,7 +77,12 @@ export function useFullPipeline() {
     }
   }
 
-  return { result, loading, error, analyze };
+  function reset() {
+    setResult(null);
+    setError(null);
+  }
+
+  return { result, loading, error, analyze, reset };
 }
 
 /** SHAP token-level explanation, BERT only, on-demand (not part of the auto-run pipeline -- slower). */

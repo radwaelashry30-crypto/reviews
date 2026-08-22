@@ -1,80 +1,200 @@
+import { useState } from "react";
 import { AspectsBreakdown } from "../components/AspectsBreakdown";
-import { ErrorState } from "../components/ErrorState";
 import { ExplanationCard } from "../components/ExplanationCard";
 import { FakeCheckBadge } from "../components/FakeCheckBadge";
 import { SentimentForm } from "../components/SentimentForm";
 import { SentimentResult } from "../components/SentimentResult";
+import { Button } from "../components/ui/Button";
+import { DemoDataBadge } from "../components/ui/DemoDataBadge";
+import { EmptyState } from "../components/ui/EmptyState";
+import { ErrorState } from "../components/ui/ErrorState";
+import { GlassCard } from "../components/ui/GlassCard";
+import { SurfaceCard } from "../components/ui/SurfaceCard";
+import { CheckIcon, CopyIcon, RefreshIcon } from "../components/sentiment/icons";
 import { useExplanation, useFullPipeline } from "../hooks/useSentiment";
+import type { FullPipelineRequest, FullPipelineResponse } from "../types/sentiment";
+import "../styles/sentiment.css";
+
+function buildResultSummary(result: FullPipelineResponse): string {
+  const s = result.sentiment;
+  const lines = [
+    "Baseera review analysis",
+    `Sentiment: ${s.label} (${(s.confidence * 100).toFixed(0)}% confidence)`,
+    `Positive: ${(s.probability_positive * 100).toFixed(0)}% · Negative: ${(s.probability_negative * 100).toFixed(0)}%`,
+    `Model: ${s.model_name}${s.translated ? " (translated before analysis)" : ""}`,
+  ];
+
+  if (result.aspects.available && result.aspects.aspects && result.aspects.aspects.length > 0) {
+    lines.push("", "Aspects:");
+    for (const a of result.aspects.aspects) lines.push(`  ${a.aspect}: ${a.sentiment}`);
+  }
+
+  if (result.fake_check && result.fake_check.available) {
+    const fc = result.fake_check;
+    const verdictText =
+      fc.verdict === "UNCERTAIN"
+        ? "Uncertain"
+        : fc.is_fake
+          ? "Inauthenticity patterns detected"
+          : "No inauthenticity patterns detected";
+    lines.push("", `Experimental authenticity signal: ${verdictText}${typeof fc.fake_probability === "number" ? ` (${(fc.fake_probability * 100).toFixed(0)}% fake-probability)` : ""}`);
+  }
+
+  return lines.join("\n");
+}
 
 export function SentimentPage() {
-  const { result, loading, error, analyze } = useFullPipeline();
+  const { result, loading, error, analyze, reset } = useFullPipeline();
   const explanation = useExplanation();
+  const [lastRequest, setLastRequest] = useState<FullPipelineRequest | null>(null);
+  const [formKey, setFormKey] = useState(0);
+  const [copied, setCopied] = useState(false);
 
-  function handleSubmit(request: Parameters<typeof analyze>[0]) {
+  function handleSubmit(request: FullPipelineRequest) {
     explanation.reset();
+    setLastRequest(request);
     analyze(request);
   }
 
+  function handleRetry() {
+    if (lastRequest) analyze(lastRequest);
+  }
+
+  function handleAnalyzeAnother() {
+    reset();
+    explanation.reset();
+    setLastRequest(null);
+    setFormKey((k) => k + 1);
+  }
+
+  async function handleCopySummary() {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(buildResultSummary(result));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access can be denied by the browser -- fail silently rather
+      // than surface an ErrorState for a non-critical convenience action.
+    }
+  }
+
+  const canRetry = !!lastRequest && !!error && error.code !== "VALIDATION_ERROR";
+
+  const liveMessage = loading
+    ? "Analyzing review…"
+    : error
+      ? `Analysis failed: ${error.message}`
+      : result
+        ? `Analysis complete. ${result.sentiment.label} sentiment, ${(result.sentiment.confidence * 100).toFixed(0)} percent confidence.`
+        : "";
+
   return (
-    <div className="page">
-      <div className="sentiment-hero">
-        <span className="eyebrow">Review Analyzer</span>
-        <h1>What is this review really saying?</h1>
-        <p className="page-subtitle">
-          Paste any customer review. Three models run in sequence: sentiment (Positive/Negative),
-          an authenticity check for negative reviews, and an aspect breakdown showing which parts
-          of the experience — price, quality, delivery, service, packaging — drove the reaction.
-          Results are probabilistic, dataset-dependent estimates, not objective judgments.
+    <div className="bsr-sentiment">
+      <header className="bsr-sentiment-intro">
+        <span className="bsr-label bsr-sentiment-intro__eyebrow">Review Analyzer</span>
+        <h1 className="bsr-h1">Understand what one review is really saying</h1>
+        <p className="bsr-body-lg">
+          Paste one customer review and analyze its sentiment and the signals the models actually return -- confidence,
+          per-aspect reaction, and (for negative reviews) an experimental authenticity screen. This is a demonstration
+          project built on academic models; every result below is a probabilistic estimate, not a certainty.
         </p>
-      </div>
-
-      <div className="sentiment-layout">
-        <div className="sentiment-form-card">
-          <SentimentForm onSubmit={handleSubmit} loading={loading} />
+        <div className="bsr-sentiment-intro__notes">
+          <DemoDataBadge kind="demo" label="Demonstration / academic project" />
+          <DemoDataBadge kind="demo" label="Estimates, not certainties" />
         </div>
+      </header>
 
-        <div>
-          <ErrorState error={error} />
-          {result ? (
-            <>
-              <SentimentResult result={result.sentiment} analysisId={result.analysis_id} />
-              {result.sentiment.model_name === "bert" && (
-                <button
-                  type="button"
-                  className="explain-trigger"
-                  disabled={explanation.loading}
-                  onClick={() => explanation.explain(result.sentiment.cleaned_text)}
-                >
-                  {explanation.loading ? "Explaining..." : "Explain this prediction"}
-                </button>
-              )}
-              <ExplanationCard result={explanation.result} loading={explanation.loading} />
-            </>
-          ) : (
-            !error && (
-              <div className="sentiment-empty">
-                <svg width="30" height="30" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M6 9.5C6 8.12 7.12 7 8.5 7h15C24.88 7 26 8.12 26 9.5v8c0 1.38-1.12 2.5-2.5 2.5h-11l-4.5 4v-4l-1-.03A2.5 2.5 0 0 1 5 17V9.5Z"
-                    stroke="currentColor" strokeWidth="1.4"
-                  />
-                  <circle cx="12" cy="13.5" r="1" fill="currentColor" />
-                  <circle cx="16" cy="13.5" r="1" fill="currentColor" />
-                  <circle cx="20" cy="13.5" r="1" fill="currentColor" />
-                </svg>
-                <span>Your review's sentiment will appear here.</span>
+      <div className="bsr-sentiment-workspace">
+        <GlassCard className="bsr-sentiment-panel">
+          <SentimentForm key={formKey} onSubmit={handleSubmit} loading={loading} />
+        </GlassCard>
+
+        <div className="bsr-sentiment-results">
+          <div className="bsr-visually-hidden" role="status" aria-live="polite">
+            {liveMessage}
+          </div>
+
+          {result && (
+            <div className="bsr-sentiment-results__actions">
+              <Button type="button" variant="secondary" leftIcon={<RefreshIcon />} onClick={handleAnalyzeAnother}>
+                Analyze another review
+              </Button>
+              <Button type="button" variant="ghost" leftIcon={copied ? <CheckIcon /> : <CopyIcon />} onClick={handleCopySummary}>
+                {copied ? "Copied" : "Copy result summary"}
+              </Button>
+            </div>
+          )}
+
+          {loading && (
+            <SurfaceCard className="bsr-sentiment-panel">
+              <div className="bsr-loading-state bsr-loading-state--full" aria-hidden="true">
+                <span className="bsr-btn__spinner bsr-loading-state__spinner" aria-hidden="true" style={{ width: 24, height: 24 }} />
+                <span className="bsr-body">Analyzing review…</span>
+                <span className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>Running sentiment, and aspect and authenticity checks where applicable.</span>
               </div>
-            )
+            </SurfaceCard>
+          )}
+
+          {!loading && error && (
+            <SurfaceCard className="bsr-sentiment-panel">
+              <ErrorState
+                title={error.code === "VALIDATION_ERROR" ? "Review couldn't be submitted" : "Analysis failed"}
+                message={error.message}
+                code={error.code}
+                onRetry={canRetry ? handleRetry : undefined}
+              />
+            </SurfaceCard>
+          )}
+
+          {!loading && !error && !result && (
+            <SurfaceCard className="bsr-sentiment-panel bsr-sentiment-empty">
+              <EmptyState
+                title="Your analysis will appear here"
+                description="Paste a review on the left and press Analyze -- sentiment, confidence, aspect signals, and (for negative reviews) an experimental authenticity check will show up in this panel."
+              />
+            </SurfaceCard>
+          )}
+
+          {!loading && result && (
+            <div className="bsr-sentiment-fade-in" style={{ display: "flex", flexDirection: "column", gap: "var(--bsr-space-5)" }}>
+              <SurfaceCard className="bsr-sentiment-panel" aria-label="Primary sentiment and confidence">
+                <SentimentResult result={result.sentiment} analysisId={result.analysis_id} />
+              </SurfaceCard>
+
+              <SurfaceCard className="bsr-sentiment-panel" aria-label="Aspect-level breakdown">
+                <AspectsBreakdown result={result.aspects} />
+              </SurfaceCard>
+
+              {result.fake_check && (
+                <SurfaceCard className="bsr-sentiment-panel" aria-label="Experimental authenticity signal">
+                  <FakeCheckBadge result={result.fake_check} />
+                </SurfaceCard>
+              )}
+
+              {result.sentiment.model_name === "bert" && (
+                <SurfaceCard className="bsr-sentiment-panel" aria-label="Model explanation">
+                  {!explanation.result && !explanation.loading ? (
+                    <>
+                      <div className="bsr-sentiment-card-head">
+                        <span className="bsr-label">Explainable AI</span>
+                        <Button type="button" variant="secondary" onClick={() => explanation.explain(result.sentiment.cleaned_text)}>
+                          Explain this prediction
+                        </Button>
+                      </div>
+                      <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>
+                        See which words pushed this specific prediction toward Positive or Negative (SHAP values, BERT only).
+                      </p>
+                    </>
+                  ) : (
+                    <ExplanationCard result={explanation.result} loading={explanation.loading} />
+                  )}
+                </SurfaceCard>
+              )}
+            </div>
           )}
         </div>
       </div>
-
-      {result && (
-        <div className="pipeline-followup">
-          <FakeCheckBadge result={result.fake_check} />
-          <AspectsBreakdown result={result.aspects} />
-        </div>
-      )}
     </div>
   );
 }

@@ -19,15 +19,15 @@ const basePrediction: SentimentPrediction = {
 describe("SentimentResult", () => {
   it("renders a Positive verdict with its confidence", () => {
     const { container } = render(<SentimentResult result={basePrediction} />);
-    expect(container.querySelector(".sentiment-result-label")).toHaveTextContent("Positive");
-    expect(screen.getByText(/87.*confidence/)).toBeInTheDocument();
+    expect(container.querySelector(".bsr-status-pill--positive")).toHaveTextContent("Positive");
+    expect(screen.getByText(/confidence/)).toHaveTextContent("87");
   });
 
   it("renders a Negative verdict distinctly from Positive", () => {
     const negative: SentimentPrediction = { ...basePrediction, label: "Negative", probability_positive: 0.1, probability_negative: 0.9, confidence: 0.9 };
     const { container } = render(<SentimentResult result={negative} />);
-    expect(container.querySelector(".sentiment-result-label")).toHaveTextContent("Negative");
-    expect(container.querySelector(".sentiment-result.negative")).not.toBeNull();
+    expect(container.querySelector(".bsr-status-pill--negative")).toHaveTextContent("Negative");
+    expect(container.querySelector(".bsr-status-pill--positive")).toBeNull();
   });
 
   it("shows the model name used", () => {

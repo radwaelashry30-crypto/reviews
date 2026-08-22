@@ -124,7 +124,11 @@ app.add_middleware(
     allow_origins=settings.FRONTEND_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST"],  # the only HTTP methods any route in this API uses
-    allow_headers=["Content-Type", "X-API-Key"],
+    # Idempotency-Key: sent by the frontend on every POST (see api/client.ts)
+    # so a cold-start retry replays the original result instead of double-
+    # submitting; without it here, the browser's CORS preflight for any POST
+    # request fails and the request never leaves the browser.
+    allow_headers=["Content-Type", "X-API-Key", "Idempotency-Key"],
 )
 
 register_exception_handlers(app)

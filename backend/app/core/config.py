@@ -50,9 +50,8 @@ class Settings(BaseSettings):
     ENABLE_BERT: bool = True
     ENABLE_CNN2D: bool = True
     ENABLE_TRANSLATION: bool = False
-    ALLOW_EXTERNAL_MODEL_DOWNLOADS: bool = False
-    # Separate from ALLOW_EXTERNAL_MODEL_DOWNLOADS (which also gates ABSA) so
-    # enabling ABSA doesn't silently also expose this specific module. As of
+    # Own dedicated flag (ABSA no longer needs one -- it runs on CNN2D, see
+    # app/ml/absa.py, not a separately-downloaded external model). As of
     # the DistilBERT+TF-IDF ensemble (see app/ml/fake_review_detection.py),
     # this is no longer off for reliability reasons -- large-scale testing
     # measured a 0.4% confident-wrong-verdict rate under paraphrasing. Still
@@ -89,7 +88,7 @@ class Settings(BaseSettings):
 
     # Optional relational persistence (sentiment-analysis history, feedback,
     # durable batch-upload records). Entirely optional -- the app runs fine
-    # with this unset, same philosophy as ENABLE_BERT/ALLOW_EXTERNAL_MODEL_DOWNLOADS.
+    # with this unset, same philosophy as ENABLE_BERT/ENABLE_FAKE_REVIEW_MODULE.
     # When unset, upload_store.py falls back to its original local-JSON store.
     DATABASE_URL: str | None = None
 

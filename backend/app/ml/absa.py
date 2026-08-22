@@ -45,16 +45,45 @@ category (a false positive falls back to the original model-scored
 behavior). It directly eliminates the confirmed failure mode above: neither
 "quality" nor "customer service" is extracted from the delivery-only
 example, so those calls are skipped entirely rather than guessed.
+
+SECOND CHANGE (this section): `yangheng/deberta-v3-base-absa-v1.1` is ~738MB
+-- a real memory risk on Render's 512MB free tier, the same class of problem
+Technical Review found for BERT (see MODEL_CARD.md). Two external
+replacements were evaluated and rejected before this one: a SetFit-based
+model (`tomaarsen/setfit-absa-bge-small-en-v1.5-restaurants-polarity`,
+134MB weights) pulls in `sentence-transformers` -> `setfit`, which installed
+a full TensorFlow dependency (500MB+) as a transitive requirement -- a net
+INCREASE in footprint despite smaller model weights, confirmed by actually
+installing it. Several small DistilBERT-based ABSA models exist on the Hub
+in the right domain (Amazon/laptop reviews, ~269MB) but each has single-
+digit download counts and no independent verification -- exactly the
+"unverified label semantics" risk this project already got burned by once
+(see app/ml/fake_review_detection.py's history). Verifying one properly
+would mean repeating the multi-day training/stability investigation done
+for the fake-review detector, disproportionate for a secondary feature.
+
+Fix: sentiment-given-aspect is now computed by finding the SENTENCE(s) of
+the review that discuss the aspect (`aspect_extraction.extract_aspect_sentence`,
+the same RAKE-based mechanism as the presence gate above, applied per-
+sentence) and scoring just that clause with CNN2D -- the project's own
+binary sentiment classifier, already fully trained, evaluated, and loaded
+in memory for Task 1. Zero additional model weights, zero new dependencies.
+Honest tradeoff: CNN2D is binary (Positive/Negative), so this has no
+"Neutral" class the way the DeBERTa model did, and clause-level sentiment is
+an approximation of aspect-level sentiment, not a purpose-trained one --
+stated explicitly in `methodology_note` below rather than presented as
+equivalent to a dedicated ABSA model.
 """
 from __future__ import annotations
 
 import pandas as pd
 
 from app.ml.aspect_extraction import aspect_mentioned as _extraction_aspect_mentioned
+from app.ml.aspect_extraction import extract_aspect_sentence
 
-ABSA_MODEL = "yangheng/deberta-v3-base-absa-v1.1"
 ABSA_ASPECTS = ["delivery", "product quality", "price", "customer service", "packaging"]
 DEFAULT_SAMPLE_SIZE = 200
+ABSA_METHOD_DESCRIPTION = "CNN2D sentiment over the RAKE-located aspect sentence (see app/ml/absa.py module docstring)"
 
 NOT_MENTIONED_LABEL = "Not mentioned"
 
@@ -100,18 +129,49 @@ def _aspect_mentioned(text: str, aspect: str) -> bool:
 
 
 def is_absa_model_available() -> bool:
-    try:
-        import transformers  # noqa: F401
-        return True
-    except ImportError:
-        return False
+    """No separate model to check for anymore -- ABSA runs on CNN2D, which
+    Task 1 already requires. Kept for API compatibility with callers written
+    against the old (separate-model) version."""
+    return True
 
 
-def load_absa_pipeline(device: int = -1):
-    """Loads the pipeline once. Callers (ModelRegistry) should cache and reuse it."""
-    from transformers import pipeline
+class _Cnn2dAspectSentiment:
+    """Callable matching the shape ModelRegistry's HF pipelines used to
+    return (`pipe(text, text_pair=aspect, truncation=True) -> [{"label",
+    "score"}]`), so analyze_aspects_single/run_absa needed no call-site
+    changes. Internally: locate the aspect's sentence (RAKE), score it with
+    the already-loaded CNN2D model -- see module docstring."""
 
-    return pipeline("text-classification", model=ABSA_MODEL, device=device)
+    def __init__(self, cnn_model, cnn_tokenizer, device):
+        self.cnn_model = cnn_model
+        self.cnn_tokenizer = cnn_tokenizer
+        self.device = device
+
+    def __call__(self, text: str, text_pair: str | None = None, truncation: bool = True):
+        import torch
+
+        from app.ml.datasets import encode_texts_for_cnn
+
+        aspect = text_pair or ""
+        clause = extract_aspect_sentence(text, aspect, extra_seeds=ASPECT_KEYWORDS.get(aspect)) or text
+        self.cnn_model.eval()
+        with torch.no_grad():
+            seq = encode_texts_for_cnn([clause], self.cnn_tokenizer, max_len=100)
+            tensor = torch.tensor(seq, dtype=torch.long, device=self.device)
+            prob_positive = float(torch.sigmoid(self.cnn_model(tensor))[0])
+        label = "Positive" if prob_positive >= 0.5 else "Negative"
+        score = prob_positive if label == "Positive" else 1.0 - prob_positive
+        return [{"label": label, "score": score}]
+
+
+def load_absa_pipeline(cnn_model=None, cnn_tokenizer=None, device: str = "cpu"):
+    """Returns a CNN2D-backed sentiment-given-aspect callable -- see
+    _Cnn2dAspectSentiment. Requires the caller (ModelRegistry) to already
+    have CNN2D loaded; raises if it isn't, same as any other "prerequisite
+    not available" path in this project."""
+    if cnn_model is None or cnn_tokenizer is None:
+        raise RuntimeError("CNN2D model must be loaded before the ABSA pipeline (ENABLE_CNN2D=false?)")
+    return _Cnn2dAspectSentiment(cnn_model, cnn_tokenizer, device)
 
 
 def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) -> dict:
@@ -134,13 +194,16 @@ def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) ->
             records.append({"aspect": aspect, "sentiment": "UNKNOWN", "confidence": 0.0, "error": str(e)})
     return {
         "available": True,
-        "model": ABSA_MODEL,
+        "model": ABSA_METHOD_DESCRIPTION,
         "aspects": records,
         "methodology_note": (
             "Sentiment-given-aspect over a fixed candidate aspect list. An aspect is only scored "
-            "by the model if RAKE keyphrase extraction finds the review's own text actually "
-            "discussing it (domain-general presence check, not a fixed keyword search); "
-            "otherwise it's reported as \"Not mentioned\" rather than guessed."
+            "if RAKE keyphrase extraction finds the review's own text actually discussing it "
+            "(domain-general presence check, not a fixed keyword search); otherwise it's reported "
+            "as \"Not mentioned\" rather than guessed. The score itself comes from CNN2D (the "
+            "project's own binary sentiment classifier) run over just the located sentence, not a "
+            "purpose-trained ABSA model -- there is no \"Neutral\" class, and clause-level sentiment "
+            "is an approximation of aspect-level sentiment. See app/ml/absa.py module docstring."
         ),
     }
 
@@ -158,16 +221,28 @@ def run_absa(
 
     Returns a long-format record list: {review_id, aspect, sentiment, confidence}.
     """
-    from transformers import pipeline
+    from app.core.config import settings
+    from app.ml.models import load_cnn2d_model
+    from app.ml.utils import get_device
 
     aspects = aspects or ABSA_ASPECTS
     pool = reviews[reviews[text_column].fillna("").astype(str).str.strip() != ""]
     sample = pool.sample(min(sample_size, len(pool)), random_state=seed)
 
     try:
-        pipe = pipeline("text-classification", model=ABSA_MODEL, device=device)
+        import pickle
+        import __main__ as main_module
+
+        from app.ml.preprocessing import SimpleVocabTokenizer
+
+        main_module.SimpleVocabTokenizer = SimpleVocabTokenizer
+        torch_device = get_device(prefer_gpu=device >= 0)
+        cnn_model = load_cnn2d_model(settings.CNN_CHECKPOINT_PATH, device=torch_device)
+        with open(settings.CNN_TOKENIZER_PATH, "rb") as f:
+            cnn_tokenizer = pickle.load(f)
+        pipe = load_absa_pipeline(cnn_model, cnn_tokenizer, device=torch_device)
     except Exception as e:
-        return {"available": False, "reason": f"Could not load {ABSA_MODEL}: {e}"}
+        return {"available": False, "reason": f"Could not load CNN2D for ABSA: {e}"}
 
     results = []
     for aspect in aspects:
@@ -189,7 +264,7 @@ def run_absa(
 
     return {
         "available": True,
-        "model": ABSA_MODEL,
+        "model": ABSA_METHOD_DESCRIPTION,
         "aspects": aspects,
         "sample_size": len(sample),
         "n_predictions": len(results),
@@ -197,7 +272,8 @@ def run_absa(
         "methodology_note": (
             "This is sentiment-given-aspect over a fixed candidate aspect list. Each aspect is "
             "gated behind RAKE-based keyphrase extraction (domain-general presence check, see "
-            "app/ml/aspect_extraction.py), not a fixed keyword search. Olist reviews have no "
-            "manually annotated aspect labels."
+            "app/ml/aspect_extraction.py), not a fixed keyword search. The score itself comes from "
+            "CNN2D over the located aspect sentence, not a purpose-trained ABSA model -- no "
+            "\"Neutral\" class. Olist reviews have no manually annotated aspect labels."
         ),
     }

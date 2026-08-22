@@ -1,5 +1,5 @@
 """API key authentication -- disabled by default (REQUIRE_API_KEY=false),
-same philosophy as ENABLE_BERT/ALLOW_EXTERNAL_MODEL_DOWNLOADS: the app keeps
+same philosophy as ENABLE_BERT/ENABLE_FAKE_REVIEW_MODULE: the app keeps
 working exactly as before unless an operator explicitly opts in by setting
 REQUIRE_API_KEY=true and at least one key in API_KEYS.
 

@@ -83,18 +83,19 @@ def test_pipeline_requires_nonempty_text(client):
     assert resp.status_code == 422
 
 
-def test_pipeline_returns_sentiment_even_when_task2_task3_models_unavailable(client):
-    """Task 2/3 depend on large external models not loaded by default
-    (ALLOW_EXTERNAL_MODEL_DOWNLOADS=false in tests). The pipeline must still
-    return Task 1's sentiment result and a graceful 'unavailable' payload for
-    the other two, never a 500."""
+def test_pipeline_returns_sentiment_even_when_task2_model_unavailable(client):
+    """Task 2 (fake-review) depends on a model not loaded by default
+    (ENABLE_FAKE_REVIEW_MODULE=false in tests). Task 3 (ABSA) runs on CNN2D,
+    which IS loaded by default, so it's expected to be available here -- see
+    app/ml/absa.py and ModelRegistry.get_absa_pipeline(). The pipeline must
+    still return Task 1's sentiment result and a graceful 'unavailable'
+    payload for Task 2, never a 500."""
     if not _bert_available(client):
         pytest.skip("Fine-tuned BERT artifact not available in this environment.")
     resp = client.post("/api/v1/sentiment/pipeline", json={"text": "The item arrived broken.", "model_name": "bert"})
     assert resp.status_code == 200
     data = resp.json()["data"]
     assert data["sentiment"]["label"] in ("Positive", "Negative")
-    assert data["aspects"]["available"] is False
     if data["sentiment"]["label"] == "Negative":
         assert data["fake_check"]["available"] is False
     else:

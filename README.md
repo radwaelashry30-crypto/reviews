@@ -125,9 +125,9 @@ Honest, unresolved limitation: trained on hotel reviews, applied here to Olist
 e-commerce reviews — a real domain shift, not separately measured (no genuinely-labeled
 Olist fake-review dataset exists to measure it against).
 
-## 19. ABSA module (experimental)
+## 19. ABSA module
 
-`yangheng/deberta-v3-base-absa-v1.1`, sentiment-given-aspect (not extraction) over {delivery, product quality, price, customer service, packaging}, sample size 200. `backend/app/ml/absa.py`.
+Sentiment-given-aspect (not extraction) over {delivery, product quality, price, customer service, packaging}. Previously `yangheng/deberta-v3-base-absa-v1.1` (~738MB) — replaced after evaluating and rejecting two smaller external alternatives: a SetFit-based model whose `sentence-transformers` dependency pulled in a full TensorFlow install (a net size INCREASE despite smaller model weights, confirmed by actually installing it), and several small DistilBERT-based models on the Hub with single-digit download counts and no independent verification. Now runs on CNN2D (already loaded for Task 1) scoring the RAKE-located clause discussing each aspect — zero additional model weights, zero new dependencies. Honest tradeoff: no "Neutral" class (CNN2D is binary), and clause-level sentiment approximates aspect-level sentiment rather than a purpose-trained model. `backend/app/ml/absa.py`, `backend/app/ml/aspect_extraction.py`.
 
 ## 20. Backend architecture
 
@@ -263,7 +263,7 @@ Seed **42** everywhere: dataset split, class-weight computation, K-Means, PyTorc
 
 - Sentiment predictions are probabilistic estimates from a specific dataset and time period — not ground truth about customer intent.
 - The dataset covers Jan 2017–Aug 2018 Brazilian e-commerce only; findings may not generalize to other markets or periods.
-- Fake-review and ABSA modules are exploratory, unvalidated for this domain.
+- The fake-review module's own paraphrase-stability was validated with statistical backing (§9 of `MODEL_COMPARISON_AUDIT.md`), but it's trained on hotel reviews, not Olist e-commerce — a real domain shift, unmeasured. ABSA's aspect-presence gate and underlying sentiment model (CNN2D) are both validated on Olist data individually, but clause-level sentiment as a stand-in for aspect-level sentiment is a heuristic approximation, not independently benchmarked as such.
 
 ## 39. Dataset-bias warning
 

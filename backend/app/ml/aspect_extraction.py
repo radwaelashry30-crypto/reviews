@@ -200,6 +200,41 @@ def aspect_mentioned(
     return False
 
 
+# Splits on sentence punctuation AND clause-level separators (commas,
+# semicolons, coordinating conjunctions). Tested directly against real
+# review text and this matters: "Great value for the price, but the
+# packaging was crushed when it arrived." has no sentence boundary at all
+# (one clause, one comma) -- splitting on periods alone leaves it as a
+# single unit, so BOTH "price" and "packaging" would incorrectly get
+# whichever sentiment happens to dominate the whole sentence (here,
+# "packaging" would wrongly inherit the positive "great value" framing).
+# Splitting on the comma isolates "the packaging was crushed" on its own.
+_CLAUSE_SPLIT = re.compile(r"(?<=[.!?])\s+|[,;]\s+|\s+\b(?:but|however|although|though|while|yet)\b\s+", re.IGNORECASE)
+
+
+def extract_aspect_sentence(text: str, aspect_category: str, extra_seeds: list[str] | None = None) -> str | None:
+    """Returns the clause(s) of `text` that actually discuss `aspect_category`
+    (same stemmed-overlap check as `aspect_mentioned`, applied per-clause
+    instead of over the whole review), joined with a space if more than one
+    matches. Split on sentence boundaries, commas/semicolons, and
+    coordinating conjunctions -- see _CLAUSE_SPLIT's comment for why commas
+    matter as much as periods for this specific task. Returns None if no
+    clause matches -- callers should fall back to the full text (this
+    matches `aspect_mentioned`'s own recall limits: an aspect confirmed
+    present in the whole text can occasionally not isolate to one exact
+    clause, e.g. a pronoun reference split across clauses).
+
+    Used to narrow a general-purpose sentiment classifier's input down to the
+    part of the review actually about the aspect in question, instead of
+    scoring the whole review (which conflates sentiment about ALL aspects
+    into one signal) -- see app/ml/absa.py."""
+    clauses = [c.strip() for c in _CLAUSE_SPLIT.split(text) if c.strip()]
+    if len(clauses) <= 1:
+        return None
+    matches = [c for c in clauses if aspect_mentioned(c, aspect_category, extra_seeds=extra_seeds)]
+    return " ".join(matches) if matches else None
+
+
 SIMILARITY_MODEL_NAME = "sentence-transformers/paraphrase-MiniLM-L3-v2"
 
 

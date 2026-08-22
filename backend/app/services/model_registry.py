@@ -41,23 +41,24 @@ class ModelRegistry:
         self.rfm_kmeans = None
         self.rfm_cluster_label_map: dict | None = None
         self.statuses: dict[str, ArtifactStatus] = {}
-        # Task 2 / Task 3: large external models (256MB / 706MB). Never loaded
-        # at startup -- lazy, on first actual request, gated by
-        # ALLOW_EXTERNAL_MODEL_DOWNLOADS, and cached here afterward so a
-        # second request reuses the same in-memory pipeline.
+        # Task 2: the fake-review ensemble's DistilBERT component is ~257MB.
+        # Never loaded at startup -- lazy, on first actual request, gated by
+        # ENABLE_FAKE_REVIEW_MODULE, and cached here afterward so a second
+        # request reuses the same in-memory pipeline. Task 3 (ABSA) has no
+        # equivalent entry: it runs on CNN2D, already loaded for Task 1, so
+        # there's nothing separate to lazy-load or cache -- see get_absa_pipeline().
         self.fake_review_pipe = None
-        self.absa_pipe = None
         # SHAP explainer: only needs the `shap` package (already installed
         # locally) and the BERT model that's already loaded -- no separate
-        # external download, so not gated by ALLOW_EXTERNAL_MODEL_DOWNLOADS.
+        # external download, so not gated by ENABLE_FAKE_REVIEW_MODULE.
         self.shap_explainer = None
         # FastAPI runs sync `def` endpoints in a thread pool, so two
-        # concurrent first requests could both see `self.absa_pipe is None`
-        # and both start loading a 706MB model at once -- on a memory-
-        # constrained host that's a guaranteed OOM. One lock per lazily
-        # loaded resource (not one shared lock) so loading fake_review
-        # doesn't block a concurrent absa/shap load unrelated to it.
-        self._locks = {name: threading.Lock() for name in ("fake_review", "absa", "shap")}
+        # concurrent first requests could both see `self.fake_review_pipe is
+        # None` and both start loading its DistilBERT component at once --
+        # on a memory-constrained host that's a guaranteed OOM. One lock per
+        # lazily loaded resource (not one shared lock) so loading fake_review
+        # doesn't block a concurrent shap load unrelated to it.
+        self._locks = {name: threading.Lock() for name in ("fake_review", "shap")}
 
     def _lazy_load(self, name: str, attr: str, loader):
         """Thread-safe lazy load: check, lock, check again. `loader` is
@@ -201,7 +202,7 @@ class ModelRegistry:
         disabled or loading fails -- callers degrade to an 'unavailable'
         response, never a crash.
 
-        Gated on its own dedicated flag (not ALLOW_EXTERNAL_MODEL_DOWNLOADS):
+        Gated on its own dedicated flag:
         the DistilBERT component alone is ~257MB on disk, a real memory cost
         on a 512MB deployment -- see ENABLE_FAKE_REVIEW_MODULE's docstring in
         app/core/config.py."""
@@ -233,11 +234,15 @@ class ModelRegistry:
         return self._lazy_load("shap", "shap_explainer", lambda: load_shap_explainer(self.bert_model, self.bert_tokenizer, device=device_idx))
 
     def get_absa_pipeline(self):
-        """Loads yangheng/deberta-v3-base-absa-v1.1 on first call, then reuses it."""
-        if not settings.ALLOW_EXTERNAL_MODEL_DOWNLOADS:
-            self.statuses["absa"] = ArtifactStatus("absa", "unavailable", None, "ALLOW_EXTERNAL_MODEL_DOWNLOADS=false")
+        """Sentiment-given-aspect over CNN2D (see app/ml/absa.py module
+        docstring for why this replaced the ~738MB external ABSA model).
+        No separate download or lazy-load needed -- CNN2D is already loaded
+        for Task 1, so this is only unavailable if CNN2D itself isn't."""
+        if self.cnn_model is None or self.cnn_tokenizer is None:
+            self.statuses["absa"] = ArtifactStatus("absa", "unavailable", None, "CNN2D not available (required for aspect-sentiment scoring)")
             return None
         from app.ml.absa import load_absa_pipeline
 
-        device_idx = 0 if self.device == "cuda" else -1
-        return self._lazy_load("absa", "absa_pipe", lambda: load_absa_pipeline(device=device_idx))
+        pipe = load_absa_pipeline(self.cnn_model, self.cnn_tokenizer, device=self.device)
+        self.statuses["absa"] = ArtifactStatus("absa", "available", None, extra={"device": self.device})
+        return pipe

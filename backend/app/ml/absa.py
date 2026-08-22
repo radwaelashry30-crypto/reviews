@@ -92,7 +92,9 @@ from app.ml.aspect_extraction import extract_aspect_sentence
 
 ABSA_ASPECTS = ["delivery", "product quality", "price", "customer service", "packaging"]
 DEFAULT_SAMPLE_SIZE = 200
-ABSA_METHOD_DESCRIPTION = "CNN2D sentiment over the RAKE-located aspect sentence (see app/ml/absa.py module docstring)"
+ABSA_METHOD_DESCRIPTION_CNN = "CNN2D sentiment over the RAKE-located aspect sentence (see app/ml/absa.py module docstring)"
+ABSA_METHOD_DESCRIPTION_DEBERTA = "yangheng/deberta-v3-base-absa-v1.1 (Aspect-Based Sentiment Analysis model)"
+ABSA_MODEL_DEBERTA = "yangheng/deberta-v3-base-absa-v1.1"
 
 NOT_MENTIONED_LABEL = "Not mentioned"
 
@@ -197,7 +199,17 @@ def load_absa_pipeline(cnn_model=None, cnn_tokenizer=None, device: str = "cpu"):
     return _Cnn2dAspectSentiment(cnn_model, cnn_tokenizer, device)
 
 
-def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) -> dict:
+def load_deberta_absa_pipeline(device: int = -1):
+    """Loads the heavy DeBERTa-v3 ABSA model."""
+    from transformers import pipeline
+    return pipeline(
+        "text-classification",
+        model=ABSA_MODEL_DEBERTA,
+        device=device,
+    )
+
+
+def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None, absa_method: str = "cnn2d") -> dict:
     """Score one review across each aspect with an already-loaded pipeline.
     Used by the live inference pipeline (Task 3).
 
@@ -215,21 +227,28 @@ def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) ->
             records.append({"aspect": aspect, "sentiment": pred["label"], "confidence": round(float(pred["score"]), 4)})
         except Exception as e:
             records.append({"aspect": aspect, "sentiment": "UNKNOWN", "confidence": 0.0, "error": str(e)})
+    methodology = (
+        "Sentiment-given-aspect over a fixed candidate aspect list. An aspect is only scored "
+        "if RAKE keyphrase extraction finds the review's own text actually discussing it "
+        "(domain-general presence check, not a fixed keyword search); otherwise it's reported "
+        "as \"Not mentioned\" rather than guessed. "
+    )
+    if absa_method == "deberta":
+        methodology += "The score itself comes from a purpose-trained ABSA model (DeBERTa-v3)."
+        model_desc = ABSA_METHOD_DESCRIPTION_DEBERTA
+    else:
+        methodology += (
+            "The score itself comes from CNN2D (the project's own binary sentiment classifier) "
+            "run over just the located clause, not a purpose-trained ABSA model. Predictions close to CNN2D's 50% "
+            "decision boundary are reported as \"Neutral\"."
+        )
+        model_desc = ABSA_METHOD_DESCRIPTION_CNN
+
     return {
         "available": True,
-        "model": ABSA_METHOD_DESCRIPTION,
+        "model": model_desc,
         "aspects": records,
-        "methodology_note": (
-            "Sentiment-given-aspect over a fixed candidate aspect list. An aspect is only scored "
-            "if RAKE keyphrase extraction finds the review's own text actually discussing it "
-            "(domain-general presence check, not a fixed keyword search); otherwise it's reported "
-            "as \"Not mentioned\" rather than guessed. The score itself comes from CNN2D (the "
-            "project's own binary sentiment classifier) run over just the located clause, not a "
-            "purpose-trained ABSA model -- clause-level sentiment is an approximation of "
-            "aspect-level sentiment. Predictions close to CNN2D's 50% decision boundary (common on "
-            "very short clauses, which the model wasn't trained on directly) are reported as "
-            "\"Neutral\" rather than a forced, overconfident-looking call. See app/ml/absa.py module docstring."
-        ),
+        "methodology_note": methodology,
     }
 
 
@@ -241,6 +260,7 @@ def run_absa(
     sample_size: int = DEFAULT_SAMPLE_SIZE,
     seed: int = 42,
     device: int = -1,
+    absa_method: str = "cnn2d",
 ) -> dict:
     """Score `sample_size` reviews x each aspect for sentiment-given-aspect.
 
@@ -255,19 +275,22 @@ def run_absa(
     sample = pool.sample(min(sample_size, len(pool)), random_state=seed)
 
     try:
-        import pickle
-        import __main__ as main_module
+        if absa_method == "deberta":
+            pipe = load_deberta_absa_pipeline(device=device)
+        else:
+            import pickle
+            import __main__ as main_module
 
-        from app.ml.preprocessing import SimpleVocabTokenizer
+            from app.ml.preprocessing import SimpleVocabTokenizer
 
-        main_module.SimpleVocabTokenizer = SimpleVocabTokenizer
-        torch_device = get_device(prefer_gpu=device >= 0)
-        cnn_model = load_cnn2d_model(settings.CNN_CHECKPOINT_PATH, device=torch_device)
-        with open(settings.CNN_TOKENIZER_PATH, "rb") as f:
-            cnn_tokenizer = pickle.load(f)
-        pipe = load_absa_pipeline(cnn_model, cnn_tokenizer, device=torch_device)
+            main_module.SimpleVocabTokenizer = SimpleVocabTokenizer
+            torch_device = get_device(prefer_gpu=device >= 0)
+            cnn_model = load_cnn2d_model(settings.CNN_CHECKPOINT_PATH, device=torch_device)
+            with open(settings.CNN_TOKENIZER_PATH, "rb") as f:
+                cnn_tokenizer = pickle.load(f)
+            pipe = load_absa_pipeline(cnn_model, cnn_tokenizer, device=torch_device)
     except Exception as e:
-        return {"available": False, "reason": f"Could not load CNN2D for ABSA: {e}"}
+        return {"available": False, "reason": f"Could not load ABSA model ({absa_method}): {e}"}
 
     results = []
     for aspect in aspects:
@@ -287,19 +310,18 @@ def run_absa(
                 "sentiment": pred["label"], "confidence": float(pred["score"]),
             })
 
+    model_desc = ABSA_METHOD_DESCRIPTION_DEBERTA if absa_method == "deberta" else ABSA_METHOD_DESCRIPTION_CNN
+    
     return {
         "available": True,
-        "model": ABSA_METHOD_DESCRIPTION,
+        "model": model_desc,
         "aspects": aspects,
         "sample_size": len(sample),
         "n_predictions": len(results),
         "records": results,
         "methodology_note": (
             "This is sentiment-given-aspect over a fixed candidate aspect list. Each aspect is "
-            "gated behind RAKE-based keyphrase extraction (domain-general presence check, see "
-            "app/ml/aspect_extraction.py), not a fixed keyword search. The score itself comes from "
-            "CNN2D over the located aspect clause, not a purpose-trained ABSA model; predictions "
-            "close to its 50% decision boundary are reported as \"Neutral\" rather than a forced "
-            "call. Olist reviews have no manually annotated aspect labels."
+            "gated behind RAKE-based keyphrase extraction. The score comes from "
+            + ("DeBERTa-v3." if absa_method == "deberta" else "CNN2D over the located aspect clause.")
         ),
     }

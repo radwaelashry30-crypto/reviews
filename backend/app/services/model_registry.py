@@ -48,6 +48,8 @@ class ModelRegistry:
         # equivalent entry: it runs on CNN2D, already loaded for Task 1, so
         # there's nothing separate to lazy-load or cache -- see get_absa_pipeline().
         self.fake_review_pipe = None
+        # Task 3 (ABSA) DeBERTa model: large ~738MB model loaded lazily.
+        self.absa_deberta_pipe = None
         # SHAP explainer: only needs the `shap` package (already installed
         # locally) and the BERT model that's already loaded -- no separate
         # external download, so not gated by ENABLE_FAKE_REVIEW_MODULE.
@@ -58,7 +60,7 @@ class ModelRegistry:
         # on a memory-constrained host that's a guaranteed OOM. One lock per
         # lazily loaded resource (not one shared lock) so loading fake_review
         # doesn't block a concurrent shap load unrelated to it.
-        self._locks = {name: threading.Lock() for name in ("fake_review", "shap")}
+        self._locks = {name: threading.Lock() for name in ("fake_review", "shap", "absa_deberta")}
 
     def _lazy_load(self, name: str, attr: str, loader):
         """Thread-safe lazy load: check, lock, check again. `loader` is
@@ -233,11 +235,14 @@ class ModelRegistry:
         device_idx = 0 if self.device == "cuda" else -1
         return self._lazy_load("shap", "shap_explainer", lambda: load_shap_explainer(self.bert_model, self.bert_tokenizer, device=device_idx))
 
-    def get_absa_pipeline(self):
-        """Sentiment-given-aspect over CNN2D (see app/ml/absa.py module
-        docstring for why this replaced the ~738MB external ABSA model).
-        No separate download or lazy-load needed -- CNN2D is already loaded
-        for Task 1, so this is only unavailable if CNN2D itself isn't."""
+    def get_absa_pipeline(self, absa_method: str = "cnn2d"):
+        """Returns the appropriate ABSA pipeline based on the requested method."""
+        if absa_method == "deberta":
+            from app.ml.absa import load_deberta_absa_pipeline
+            device_idx = 0 if self.device == "cuda" else -1
+            return self._lazy_load("absa_deberta", "absa_deberta_pipe", lambda: load_deberta_absa_pipeline(device=device_idx))
+
+        # Default: CNN2D
         if self.cnn_model is None or self.cnn_tokenizer is None:
             self.statuses["absa"] = ArtifactStatus("absa", "unavailable", None, "CNN2D not available (required for aspect-sentiment scoring)")
             return None

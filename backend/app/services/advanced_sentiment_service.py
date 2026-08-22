@@ -29,6 +29,7 @@ def run_full_pipeline(
     registry: ModelRegistry, text: str, model_name: str = "bert",
     source_language: str = "en", translate: bool = False,
     aspects: list[str] | None = None,
+    absa_method: str = "cnn2d",
 ) -> dict:
     """Task 1 -> (if Negative) Task 2 -> Task 3. Returns all three results together."""
     sentiment = predict_sentiment(registry, text, model_name=model_name, source_language=source_language, translate=translate)
@@ -43,9 +44,9 @@ def run_full_pipeline(
             status = registry.statuses.get("fake_review")
             fake_check = {"available": False, "reason": status.error if status else "not loaded"}
 
-    absa_pipe = registry.get_absa_pipeline()
+    absa_pipe = registry.get_absa_pipeline(absa_method=absa_method)
     if absa_pipe is not None:
-        aspects_result = analyze_aspects_single(absa_pipe, analyzed_text, aspects=aspects or ABSA_ASPECTS)
+        aspects_result = analyze_aspects_single(absa_pipe, analyzed_text, aspects=aspects or ABSA_ASPECTS, absa_method=absa_method)
     else:
         status = registry.statuses.get("absa")
         aspects_result = {"available": False, "reason": status.error if status else "not loaded"}

@@ -53,6 +53,7 @@ export interface FullPipelineRequest {
   source_language: "en" | "pt";
   translate: boolean;
   aspects?: string[];
+  absa_model: "cnn2d" | "deberta";
 }
 
 export interface FakeCheckResult {

@@ -97,7 +97,7 @@ def full_pipeline(request: Request, payload: FullPipelineRequest, registry: Mode
     result = advanced_sentiment_service.run_full_pipeline(
         registry, payload.text, model_name=payload.model_name,
         source_language=payload.source_language, translate=payload.translate,
-        aspects=payload.aspects,
+        aspects=payload.aspects, absa_method=payload.absa_model,
     )
     aspects_for_db = result["aspects"]["aspects"] if result["aspects"].get("available") else None
     analysis_id = persistence_service.try_save_analysis(payload.text, result["sentiment"], aspects_for_db)

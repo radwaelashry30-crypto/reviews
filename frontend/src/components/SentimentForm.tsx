@@ -17,6 +17,7 @@ interface Props {
 export function SentimentForm({ onSubmit, loading }: Props) {
   const [text, setText] = useState("");
   const [modelName, setModelName] = useState<ModelName>("bert");
+  const [absaModel, setAbsaModel] = useState<"cnn2d" | "deberta">("cnn2d");
   const [sourceLanguage, setSourceLanguage] = useState<"en" | "pt">("en");
   const [translate, setTranslate] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -36,7 +37,7 @@ export function SentimentForm({ onSubmit, loading }: Props) {
     e.preventDefault();
     setTouched(true);
     if (isBlank || loading) return;
-    onSubmit({ text, model_name: modelName, source_language: sourceLanguage, translate });
+    onSubmit({ text, model_name: modelName, source_language: sourceLanguage, translate, absa_model: absaModel });
   }
 
   function fillSample() {
@@ -110,6 +111,13 @@ export function SentimentForm({ onSubmit, loading }: Props) {
             {LANGUAGE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
+          </select>
+        </label>
+        <label className="bsr-sentiment-field-label">
+          ABSA Model
+          <select className="bsr-sentiment-select" value={absaModel} onChange={(e) => setAbsaModel(e.target.value as "cnn2d" | "deberta")}>
+            <option value="deberta">DeBERTa-v3 (Large/Slow)</option>
+            <option value="cnn2d">RAKE + CNN2D (Fast/Light)</option>
           </select>
         </label>
         <label className="bsr-sentiment-checkbox-row">

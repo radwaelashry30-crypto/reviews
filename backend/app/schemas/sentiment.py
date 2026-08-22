@@ -59,6 +59,7 @@ class FullPipelineRequest(BaseModel):
     source_language: Literal["en", "pt"] = "en"
     translate: bool = False
     aspects: list[str] | None = None
+    absa_model: Literal["cnn2d", "deberta"] = "cnn2d"
 
     @field_validator("text")
     @classmethod

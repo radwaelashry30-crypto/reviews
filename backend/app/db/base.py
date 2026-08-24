@@ -1,5 +1,5 @@
 """SQLAlchemy engine/session setup. Entirely optional infrastructure --
-mirrors the ENABLE_BERT / ENABLE_FAKE_REVIEW_MODULE pattern already used
+mirrors the ENABLE_BERT pattern already used
 elsewhere in this project: the app must run correctly with `DATABASE_URL`
 unset (no persistence, but no crash), and degrade gracefully if the database
 is unreachable at request time (never break a prediction because history

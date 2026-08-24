@@ -4,11 +4,10 @@ plus a summary. Runs synchronously (no task queue) -- bounded by
 MAX_FILE_ROWS so a very large upload doesn't block the server indefinitely.
 
 Beyond the base Positive/Negative pass (cheap, runs over every row), this
-module offers an opt-in `advanced` mode that adds fake-review screening and
-aspect-based sentiment via `advanced_sentiment_service.run_full_pipeline`.
-That pipeline costs ~6-7 model forward passes per row (1 sentiment + up to 5
-ABSA aspect passes + 1 fake-check for negatives), so -- same pattern already
-used by `app/ml/absa.py::run_absa` (DEFAULT_SAMPLE_SIZE=200) and
+module offers an opt-in `advanced` mode that adds aspect-based sentiment via
+`advanced_sentiment_service.run_full_pipeline`. That pipeline costs up to 6
+model forward passes per row (1 sentiment + up to 5 ABSA aspect passes), so
+-- same pattern already used by `app/ml/absa.py::run_absa` (DEFAULT_SAMPLE_SIZE=200) and
 `app/ml/explainability.py` (DEFAULT_XAI_SAMPLE_SIZE=8) -- it only runs on a
 bounded sample of rows, never the full upload, and says so via a
 methodology_note.
@@ -171,46 +170,6 @@ def _build_time_trend(df: pd.DataFrame, date_col: str | None, label_by_index: di
     return {"available": True, "granularity": "week", "date_column_used": date_col, "points": points}
 
 
-def _build_fake_review_summary(pipeline_results: list[dict]) -> dict:
-    """Aggregates fake_check across the advanced-sampled rows. fake_check only
-    runs (inside run_full_pipeline) for rows predicted Negative, so this is a
-    rate among screened negatives, not among the whole sample."""
-    screened = [r["fake_check"] for r in pipeline_results if r.get("fake_check") is not None]
-    if not screened:
-        return {"available": False, "reason": "no negative reviews in the analyzed sample"}
-
-    available = [f for f in screened if f.get("available")]
-    if not available:
-        return {"available": False, "reason": screened[0].get("reason", "fake-review model not available on this deployment")}
-
-    n_screened = len(available)
-    # "reliable" is True unless the verdict landed in the model's own
-    # UNCERTAIN band (see fake_review_detection.py's _verdict) -- excluding
-    # those from flagged_pct means an honestly-uncertain call doesn't get
-    # silently counted as a confident one.
-    reliable = [f for f in available if f.get("reliable", True)]
-    n_unreliable = n_screened - len(reliable)
-    n_flagged = sum(1 for f in reliable if f.get("is_fake"))
-    n_reliable = len(reliable)
-    return {
-        "available": True,
-        "n_screened_negative": n_screened,
-        "n_reliable": n_reliable,
-        "n_unreliable_excluded": n_unreliable,
-        "n_flagged_fake": n_flagged,
-        "flagged_pct": round(n_flagged / n_reliable * 100, 2) if n_reliable else 0.0,
-        "methodology_note": (
-            "Fake-review screening over the negative reviews within the analyzed sample "
-            f"(up to {ADVANCED_SAMPLE_SIZE} rows of this file, not the full upload), using an "
-            "ensemble trained on a genuinely human-verified deceptive-review corpus (Ott et al., "
-            "hotel domain -- a real domain shift from Olist e-commerce, not separately measured). "
-            f"{n_unreliable} of {n_screened} screened rows landed in the model's own UNCERTAIN "
-            "band and were excluded from flagged_pct rather than forced into a confident guess. "
-            "See MODEL_COMPARISON_AUDIT.md for the full validation methodology."
-        ),
-    }
-
-
 def _build_aspect_summary(pipeline_results: list[dict], sample_size: int) -> dict:
     """Aggregates per-row ABSA results (sentiment-given-aspect over a fixed
     aspect list) into per-aspect Positive/Neutral/Negative rates.
@@ -277,8 +236,8 @@ def classify_review_file(
     valid_mask = texts.str.strip() != ""
     valid_indices = df.index[valid_mask].tolist()
 
-    # First N valid rows get the expensive full pipeline (fake-check + aspects);
-    # the rest still get plain sentiment, same as before.
+    # First N valid rows get the expensive full pipeline (aspects); the rest
+    # still get plain sentiment, same as before.
     advanced_indices = set(valid_indices[:ADVANCED_SAMPLE_SIZE]) if advanced else set()
 
     results = []
@@ -337,7 +296,6 @@ def classify_review_file(
 
     if advanced:
         output["advanced_sample_size"] = len(advanced_indices)
-        output["fake_review_summary"] = _build_fake_review_summary(pipeline_results)
         output["aspect_summary"] = _build_aspect_summary(pipeline_results, len(advanced_indices))
 
     return output

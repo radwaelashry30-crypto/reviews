@@ -18,7 +18,7 @@ pytest -q
 | `test_data_grain.py` | Grain-correctness of analytics KPIs (order vs. order-item level) |
 | `test_analytics_api.py` | Dashboard/analytics endpoints |
 | `test_sentiment_api.py` | `/predict`, `/predict-batch`, `/pipeline`, `/explain`, upload-file persistence |
-| `test_batch_upload.py` | CSV/XLSX batch classification, advanced analysis (aspects/fake-check/trend/top-words), oversized-file rejection |
+| `test_batch_upload.py` | CSV/XLSX batch classification, advanced analysis (aspects/trend/top-words), oversized-file rejection |
 | `test_absa.py` | Aspect keyword-presence gate (regression test for the confirmed hallucination bug) |
 | `test_rate_limiting.py` | Per-IP rate limiting on `/explain` (regression test for the no-rate-limiting gap) |
 

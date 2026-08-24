@@ -41,24 +41,18 @@ class ModelRegistry:
         self.rfm_kmeans = None
         self.rfm_cluster_label_map: dict | None = None
         self.statuses: dict[str, ArtifactStatus] = {}
-        # Task 2: the fake-review ensemble's DistilBERT component is ~257MB.
-        # Never loaded at startup -- lazy, on first actual request, gated by
-        # ENABLE_FAKE_REVIEW_MODULE, and cached here afterward so a second
-        # request reuses the same in-memory pipeline. Task 3 (ABSA) has no
-        # equivalent entry: it runs on CNN2D, already loaded for Task 1, so
-        # there's nothing separate to lazy-load or cache -- see get_absa_pipeline().
-        self.fake_review_pipe = None
         # SHAP explainer: only needs the `shap` package (already installed
         # locally) and the BERT model that's already loaded -- no separate
-        # external download, so not gated by ENABLE_FAKE_REVIEW_MODULE.
+        # external download or gating flag needed. ABSA (Task 3) has no
+        # equivalent entry: it runs on CNN2D, already loaded for Task 1, so
+        # there's nothing separate to lazy-load or cache -- see get_absa_pipeline().
         self.shap_explainer = None
         # FastAPI runs sync `def` endpoints in a thread pool, so two
-        # concurrent first requests could both see `self.fake_review_pipe is
-        # None` and both start loading its DistilBERT component at once --
-        # on a memory-constrained host that's a guaranteed OOM. One lock per
-        # lazily loaded resource (not one shared lock) so loading fake_review
-        # doesn't block a concurrent shap load unrelated to it.
-        self._locks = {name: threading.Lock() for name in ("fake_review", "shap")}
+        # concurrent first requests could both see `self.shap_explainer is
+        # None` and both start loading it at once. One lock per lazily
+        # loaded resource (not one shared lock) so each load doesn't block
+        # a concurrent load unrelated to it.
+        self._locks = {name: threading.Lock() for name in ("shap",)}
 
     def _lazy_load(self, name: str, attr: str, loader):
         """Thread-safe lazy load: check, lock, check again. `loader` is
@@ -195,29 +189,7 @@ class ModelRegistry:
             raise ModelUnavailableError(f"RFM segmentation model is not available: {reason}")
         return self.rfm_scaler, self.rfm_kmeans, self.rfm_cluster_label_map
 
-    # -- lazy-loaded optional/experimental models (Task 2, Task 3) ------
-    def get_fake_review_pipeline(self):
-        """Loads the DistilBERT+TF-IDF fake-review ensemble on first call,
-        then reuses it. Returns None (never raises) if the module is
-        disabled or loading fails -- callers degrade to an 'unavailable'
-        response, never a crash.
-
-        Gated on its own dedicated flag:
-        the DistilBERT component alone is ~257MB on disk, a real memory cost
-        on a 512MB deployment -- see ENABLE_FAKE_REVIEW_MODULE's docstring in
-        app/core/config.py."""
-        if not settings.ENABLE_FAKE_REVIEW_MODULE:
-            self.statuses["fake_review"] = ArtifactStatus("fake_review", "unavailable", None, "ENABLE_FAKE_REVIEW_MODULE=false")
-            return None
-        from app.ml.fake_review_detection import load_fake_review_pipeline
-
-        device_idx = 0 if self.device == "cuda" else -1
-        load_bert = not settings.FAKE_REVIEW_TFIDF_ONLY
-        return self._lazy_load(
-            "fake_review", "fake_review_pipe",
-            lambda: load_fake_review_pipeline(device=device_idx, load_bert=load_bert),
-        )
-
+    # -- lazy-loaded optional models (SHAP explainer) --------------------
     def get_shap_explainer(self):
         """Loads a SHAP explainer wrapping the fine-tuned BERT model on first
         call, then reuses it. Requires BERT itself to be available (ENABLE_BERT=true)

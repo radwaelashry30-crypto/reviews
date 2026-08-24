@@ -53,7 +53,7 @@ class BatchPredictionResponse(BaseModel):
 
 
 class FullPipelineRequest(BaseModel):
-    """Task 1 (sentiment) -> Task 2 (fake check, only if Negative) -> Task 3 (aspects, always)."""
+    """Task 1 (sentiment) -> Task 2 (aspects, always)."""
     text: str = Field(..., min_length=1, max_length=2000)
     model_name: ModelName = "bert"
     source_language: Literal["en", "pt"] = "en"
@@ -70,7 +70,6 @@ class FullPipelineRequest(BaseModel):
 
 class FullPipelineResponse(BaseModel):
     sentiment: SentimentPrediction
-    fake_check: dict | None
     aspects: dict
 
 

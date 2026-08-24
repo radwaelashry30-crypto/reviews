@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AspectsBreakdown } from "../components/AspectsBreakdown";
 import { ExplanationCard } from "../components/ExplanationCard";
-import { FakeCheckBadge } from "../components/FakeCheckBadge";
 import { SentimentForm } from "../components/SentimentForm";
 import { SentimentResult } from "../components/SentimentResult";
 import { Button } from "../components/ui/Button";
@@ -27,17 +26,6 @@ function buildResultSummary(result: FullPipelineResponse): string {
   if (result.aspects.available && result.aspects.aspects && result.aspects.aspects.length > 0) {
     lines.push("", "Aspects:");
     for (const a of result.aspects.aspects) lines.push(`  ${a.aspect}: ${a.sentiment}`);
-  }
-
-  if (result.fake_check && result.fake_check.available) {
-    const fc = result.fake_check;
-    const verdictText =
-      fc.verdict === "UNCERTAIN"
-        ? "Uncertain"
-        : fc.is_fake
-          ? "Inauthenticity patterns detected"
-          : "No inauthenticity patterns detected";
-    lines.push("", `Experimental authenticity signal: ${verdictText}${typeof fc.fake_probability === "number" ? ` (${(fc.fake_probability * 100).toFixed(0)}% fake-probability)` : ""}`);
   }
 
   return lines.join("\n");
@@ -95,9 +83,9 @@ export function SentimentPage() {
         <span className="bsr-label bsr-sentiment-intro__eyebrow">Review Analyzer</span>
         <h1 className="bsr-h1">Understand what one review is really saying</h1>
         <p className="bsr-body-lg">
-          Paste one customer review and analyze its sentiment and the signals the models actually return -- confidence,
-          per-aspect reaction, and (for negative reviews) an experimental authenticity screen. This is a demonstration
-          project built on academic models; every result below is a probabilistic estimate, not a certainty.
+          Paste one customer review and analyze its sentiment and the signals the models actually return -- confidence
+          and per-aspect reaction. This is a demonstration project built on academic models; every result below is a
+          probabilistic estimate, not a certainty.
         </p>
         <div className="bsr-sentiment-intro__notes">
           <DemoDataBadge kind="demo" label="Demonstration / academic project" />
@@ -131,7 +119,7 @@ export function SentimentPage() {
               <div className="bsr-loading-state bsr-loading-state--full" aria-hidden="true">
                 <span className="bsr-btn__spinner bsr-loading-state__spinner" aria-hidden="true" style={{ width: 24, height: 24 }} />
                 <span className="bsr-body">Analyzing review…</span>
-                <span className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>Running sentiment, and aspect and authenticity checks where applicable.</span>
+                <span className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>Running sentiment and aspect analysis.</span>
               </div>
             </SurfaceCard>
           )}
@@ -151,7 +139,7 @@ export function SentimentPage() {
             <SurfaceCard className="bsr-sentiment-panel bsr-sentiment-empty">
               <EmptyState
                 title="Your analysis will appear here"
-                description="Paste a review on the left and press Analyze -- sentiment, confidence, aspect signals, and (for negative reviews) an experimental authenticity check will show up in this panel."
+                description="Paste a review on the left and press Analyze -- sentiment, confidence, and aspect signals will show up in this panel."
               />
             </SurfaceCard>
           )}
@@ -165,12 +153,6 @@ export function SentimentPage() {
               <SurfaceCard className="bsr-sentiment-panel" aria-label="Aspect-level breakdown">
                 <AspectsBreakdown result={result.aspects} />
               </SurfaceCard>
-
-              {result.fake_check && (
-                <SurfaceCard className="bsr-sentiment-panel" aria-label="Experimental authenticity signal">
-                  <FakeCheckBadge result={result.fake_check} />
-                </SurfaceCard>
-              )}
 
               {result.sentiment.model_name === "bert" && (
                 <SurfaceCard className="bsr-sentiment-panel" aria-label="Model explanation">

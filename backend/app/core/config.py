@@ -50,24 +50,6 @@ class Settings(BaseSettings):
     ENABLE_BERT: bool = True
     ENABLE_CNN2D: bool = True
     ENABLE_TRANSLATION: bool = False
-    # Own dedicated flag (ABSA no longer needs one -- it runs on CNN2D, see
-    # app/ml/absa.py, not a separately-downloaded external model). As of
-    # the DistilBERT+TF-IDF ensemble (see app/ml/fake_review_detection.py),
-    # this is no longer off for reliability reasons -- large-scale testing
-    # measured a 0.4% confident-wrong-verdict rate under paraphrasing. Still
-    # off by default here (opt in per deployment, same pattern as ENABLE_BERT/
-    # ENABLE_CNN2D) -- pair with FAKE_REVIEW_TFIDF_ONLY=true below on a
-    # memory-constrained host.
-    ENABLE_FAKE_REVIEW_MODULE: bool = False
-    # Drops the ~257MB DistilBERT component and serves the TF-IDF+LogReg
-    # classifier alone (~350KB) -- makes ENABLE_FAKE_REVIEW_MODULE safe on
-    # Render's 512MB free tier stacked on top of CNN2D + the rest of the app.
-    # Tradeoff, measured independently for each mode (see module docstring):
-    # the TF-IDF-only component alone answers less often (41.2% UNCERTAIN vs.
-    # the full ensemble's 6.2%), not less reliably when it does answer (0/188
-    # vs. 0/300 confident flips under paraphrasing, both with the full
-    # ensemble's rate inside this mode's own confidence interval).
-    FAKE_REVIEW_TFIDF_ONLY: bool = False
     # Number of trusted reverse proxies between the client and this process
     # (Render/Vercel/any load balancer = 1 hop). Used to pick the real client
     # IP out of X-Forwarded-For for rate limiting -- everything before that
@@ -88,7 +70,7 @@ class Settings(BaseSettings):
 
     # Optional relational persistence (sentiment-analysis history, feedback,
     # durable batch-upload records). Entirely optional -- the app runs fine
-    # with this unset, same philosophy as ENABLE_BERT/ENABLE_FAKE_REVIEW_MODULE.
+    # with this unset, same philosophy as ENABLE_BERT.
     # When unset, upload_store.py falls back to its original local-JSON store.
     DATABASE_URL: str | None = None
 

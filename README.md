@@ -3,7 +3,7 @@
 An interactive analytics dashboard and review-sentiment classifier built on a fixed, static Olist Brazilian e-commerce research dataset (2016-2018) — a FastAPI backend, a React/TypeScript frontend, and the full ML pipeline extracted and corrected from the original research notebook. No live/streaming data source or scheduled refresh pipeline; every chart and prediction runs against the same processed snapshot (`data/processed/*.parquet`) or a request-time model call, not a live feed.
 
 > **New here? Two documents summarize the whole project:**
-> - [`PROJECT_JOURNEY.md`](PROJECT_JOURNEY.md) ([PDF](PROJECT_JOURNEY.pdf)) — every phase of work, every problem found, and the actual fix applied and verified for each, in chronological order (technical-review phases, CI/CD, Docker hardening, three real production incidents caught live, and the full fake-review detector investigation).
+> - [`PROJECT_JOURNEY.md`](PROJECT_JOURNEY.md) ([PDF](PROJECT_JOURNEY.pdf)) — every phase of work, every problem found, and the actual fix applied and verified for each, in chronological order (technical-review phases, CI/CD, Docker hardening, and three real production incidents caught live).
 > - [`Baseera_Project_Walkthrough.ipynb`](Baseera_Project_Walkthrough.ipynb) — a runnable, step-by-step notebook covering the whole pipeline from raw data upload to live deployment, with real code and real numbers.
 
 ## 1. Overview
@@ -99,51 +99,25 @@ The notebook compared BERT on a 2,000-row subsample against CNN2D on the full 7,
 
 SHAP `PartitionExplainer` over the fine-tuned BERT pipeline, sample size 8 (configurable), explaining rows drawn from the stored split manifest only. `backend/app/ml/explainability.py`; degrades gracefully (reports `available: false`) if `shap` isn't installed rather than crashing.
 
-## 18. Fake-review module
-
-An ensemble (DistilBERT, fine-tuned with a paraphrase-consistency loss + TF-IDF/Logistic
-Regression), replacing two earlier checkpoints that were confirmed unreliable — the
-original `jb10231/fake-review-detector` (label semantics never verified, predictions
-flipped from 99.9% to 0.1% confidence under a pure synonym substitution) and a first
-retrain attempt that failed the same paraphrase-stability test the same way. A candidate
-replacement dataset (a large Amazon "spam/non-spam" corpus) was also rejected before any
-training was attempted, once direct inspection showed its label was a 1:1 proxy for star
-rating, not a genuine spam judgment.
-
-Trained on the Ott et al. Deceptive Opinion Spam Corpus (Cornell, genuinely
-human-verified deceptive-vs-truthful labels). Validated over all 320 held-out test
-reviews (not a handful of examples): 0/300 confidently-wrong verdicts under
-meaning-preserving paraphrasing (95% CI upper bound 1.3%), with predictions close to the
-decision boundary honestly reported as `UNCERTAIN` rather than forced into a guess.
-
-- **Full investigation** (both rejected checkpoints, the rejected dataset, all four
-  training iterations, the statistical validation methodology): [`MODEL_COMPARISON_AUDIT.md` §9](MODEL_COMPARISON_AUDIT.md#9-fake-review-detection-from-an-unreliable-checkpoint-to-a-validated-ensemble-2026-08-19)
-- **Model weights + card, downloadable independently of this repo**: [huggingface.co/RadwaElashry2030/baseera-fake-review-ensemble](https://huggingface.co/RadwaElashry2030/baseera-fake-review-ensemble)
-- Code: `backend/app/ml/fake_review_detection.py`. Off by default (`ENABLE_FAKE_REVIEW_MODULE=false`) — a `FAKE_REVIEW_TFIDF_ONLY` mode exists specifically to fit the module's memory footprint on RAM-constrained free-tier hosts (used on the live deployment).
-
-Honest, unresolved limitation: trained on hotel reviews, applied here to Olist
-e-commerce reviews — a real domain shift, not separately measured (no genuinely-labeled
-Olist fake-review dataset exists to measure it against).
-
-## 19. ABSA module
+## 18. ABSA module
 
 Sentiment-given-aspect (not extraction) over {delivery, product quality, price, customer service, packaging}. Previously `yangheng/deberta-v3-base-absa-v1.1` (~738MB) — replaced after evaluating and rejecting two smaller external alternatives: a SetFit-based model whose `sentence-transformers` dependency pulled in a full TensorFlow install (a net size INCREASE despite smaller model weights, confirmed by actually installing it), and several small DistilBERT-based models on the Hub with single-digit download counts and no independent verification. Now runs on CNN2D (already loaded for Task 1) scoring the RAKE-located clause discussing each aspect — zero additional model weights, zero new dependencies. Honest tradeoff: no "Neutral" class (CNN2D is binary), and clause-level sentiment approximates aspect-level sentiment rather than a purpose-trained model. `backend/app/ml/absa.py`, `backend/app/ml/aspect_extraction.py`.
 
-## 20. Backend architecture
+## 19. Backend architecture
 
 FastAPI, layered: `api/v1/endpoints` (HTTP) → `services` (business logic, no FastAPI imports) → `ml` (pure ML/data code) + `repositories` (cached data access, plus the optional DB-backed `sentiment_repository.py`/`batch_repository.py`). `ModelRegistry` loads every optional artifact once at startup (`app/main.py` lifespan) and never reloads per request. See `API_DOCUMENTATION.md`.
 
 Optional relational persistence (sentiment-analysis history, feedback, durable batch-upload records) via SQLAlchemy + Alembic — entirely opt-in, set `DATABASE_URL` to enable it. See `DATABASE_SETUP.md`.
 
-## 21. Frontend architecture
+## 20. Frontend architecture
 
 Vite + React + TypeScript + React Router. `src/api/` centralizes all HTTP calls; `src/types/` mirrors backend Pydantic schemas field-for-field; `src/hooks/` wraps loading/error state; `src/pages/` + `src/components/` are pure presentation — no ML logic in the frontend. See `FRONTEND_INTEGRATION.md`.
 
-## 22. API endpoints
+## 21. API endpoints
 
 `/api/v1/health`, `/models/status`, `/models/info`, `/sentiment/predict[-batch]`, `/analytics/summary|orders/monthly|revenue/monthly|reviews/distribution|delivery/summary|payments/distribution`, `/customers/summary|top-cities|segments[/{name}]`, `/sellers/summary|performance`, `/products/categories|category-performance`, `/geography/state-performance`, `/segmentation/rfm-summary`, `/segmentation/predict`. Full detail: `API_DOCUMENTATION.md`.
 
-## 23. Folder structure
+## 22. Folder structure
 
 ```
 Olist_Marketplace_Platform/
@@ -166,7 +140,7 @@ Olist_Marketplace_Platform/
 └── original_project_backup/           # everything from the uploaded folder, preserved as-is
 ```
 
-## 24. Installation
+## 23. Installation
 
 ```bash
 git clone <this-repo> && cd Olist_Marketplace_Platform
@@ -176,18 +150,18 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## 25. Data placement
+## 24. Data placement
 
 See `data/README.md`. The delivered project already includes `data/interim/reviews_translated.csv` and `data/processed/*.parquet`, so the API and frontend work out of the box without placing raw CSVs.
 
-## 26. Backend startup
+## 25. Backend startup
 
 ```bash
 cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## 27. Frontend startup
+## 26. Frontend startup
 
 ```bash
 cd frontend
@@ -196,7 +170,7 @@ cp .env.example .env
 npm run dev
 ```
 
-## 28. Docker startup
+## 27. Docker startup
 
 ```bash
 docker compose build
@@ -204,44 +178,44 @@ docker compose up
 docker compose down
 ```
 
-## 29. Translation
+## 28. Translation
 
 ```bash
 python backend/scripts/translate_reviews.py --allow-external-downloads
 ```
 Reuses `data/interim/reviews_translated.csv` if present; only translates rows that don't already have a translation.
 
-## 30. Full pipeline
+## 29. Full pipeline
 
 ```bash
 python backend/scripts/run_pipeline.py --data-dir data/raw --clean --eda --segment
 ```
 
-## 31. Training
+## 30. Training
 
 ```bash
 python backend/scripts/train.py --model bert --epochs 3 --batch-size 8 --learning-rate 2e-5
 python backend/scripts/train.py --model cnn2d --epochs 10 --batch-size 64 --learning-rate 0.001
 ```
 
-## 32. Evaluation
+## 31. Evaluation
 
 ```bash
 python backend/scripts/evaluate.py --model bert --model-path models/bert_review_sentiment --split-manifest artifacts/split_manifest.json
 python backend/scripts/evaluate.py --model cnn2d --checkpoint models/cnn2d_review_sentiment.pt --tokenizer artifacts/cnn2d_tokenizer.pkl --split-manifest artifacts/split_manifest.json
 ```
 
-## 33. Inference
+## 32. Inference
 
 ```bash
 python backend/scripts/inference.py --text "The product arrived early and works perfectly." --model bert
 ```
 
-## 34. API examples
+## 33. API examples
 
 See `API_DOCUMENTATION.md` for curl/JS/React examples for every endpoint.
 
-## 35. Testing
+## 34. Testing
 
 ```bash
 cd backend
@@ -251,41 +225,41 @@ npm run typecheck
 npm run build
 ```
 
-## 36. CPU and GPU notes
+## 35. CPU and GPU notes
 
 Everything runs on CPU (verified: BERT inference ~18ms/review, ~0.35s/batch of 8 on CPU). `get_device()` auto-selects CUDA when available. Install the CUDA build of PyTorch separately (see https://pytorch.org/get-started/locally/) — this project's `requirements.txt` intentionally does not pin a CUDA-specific wheel.
 
-## 37. Reproducibility notes / random seed
+## 36. Reproducibility notes / random seed
 
 Seed **42** everywhere: dataset split, class-weight computation, K-Means, PyTorch/NumPy/Python RNG (`utils.set_seed`). BERT/CNN tokenizers are fit on the TRAIN partition only. The split manifest (`artifacts/split_manifest.json`) stores stable `review_id`/`text_hash` identifiers so evaluation never depends on re-running the split.
 
-## 38. Limitations
+## 37. Limitations
 
 - Sentiment predictions are probabilistic estimates from a specific dataset and time period — not ground truth about customer intent.
 - The dataset covers Jan 2017–Aug 2018 Brazilian e-commerce only; findings may not generalize to other markets or periods.
-- The fake-review module's own paraphrase-stability was validated with statistical backing (§9 of `MODEL_COMPARISON_AUDIT.md`), but it's trained on hotel reviews, not Olist e-commerce — a real domain shift, unmeasured. ABSA's aspect-presence gate and underlying sentiment model (CNN2D) are both validated on Olist data individually, but clause-level sentiment as a stand-in for aspect-level sentiment is a heuristic approximation, not independently benchmarked as such.
+- ABSA's aspect-presence gate and underlying sentiment model (CNN2D) are both validated on Olist data individually, but clause-level sentiment as a stand-in for aspect-level sentiment is a heuristic approximation, not independently benchmarked as such.
 
-## 39. Dataset-bias warning
+## 38. Dataset-bias warning
 
 Olist's seller/customer base is concentrated in Southeast Brazil; delivery/logistics findings for North/Northeast states rest on comparatively fewer orders.
 
-## 40. Translation-quality warning
+## 39. Translation-quality warning
 
 Reviews were machine-translated (MarianMT, `opus-mt-ROMANCE-en` — see ARTIFACT_AUDIT.md §4) from Portuguese. Translation errors can shift sentiment-bearing words; the CNN/BERT models were trained and evaluated on this translated text, not the original Portuguese.
 
-## 41. Responsible-use statement
+## 40. Responsible-use statement
 
-Do not use sentiment predictions to make consequential decisions about individual customers or sellers (e.g. account suspension) without human review. Do not present the fake-review or ABSA modules' output as validated ground truth.
+Do not use sentiment predictions to make consequential decisions about individual customers or sellers (e.g. account suspension) without human review. Do not present the ABSA module's output as validated ground truth.
 
-## 42. Contributors / Supervisor
+## 41. Contributors / Supervisor
 
 Add your name(s) and supervisor here before submission.
 
-## 43. Report
+## 42. Report
 
 See `reports/executive_analytics_report.md`.
 
-## 44. Git LFS / large files
+## 43. Git LFS / large files
 
 | Artifact | Size |
 |---|---|
@@ -301,6 +275,6 @@ git add .gitattributes
 ```
 The file is preserved in this ZIP regardless of Git LFS setup.
 
-## 45. License
+## 44. License
 
 Code: add your preferred license (e.g. MIT). Dataset: Olist data is CC BY-NC-SA 4.0 (Kaggle) — non-commercial, share-alike, attribution required; this project's derived models/datasets inherit that restriction.

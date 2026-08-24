@@ -23,10 +23,10 @@ from a 22-issue technical review, not as an initial design choice.
 | `backend/` | FastAPI application: API, ML pipeline, services, tests, migrations, CLI scripts |
 | `frontend/` | React + TypeScript dashboard and inference UI (Vite, Vitest) |
 | `shared/` | Cross-stack contract: `api_contract.json`, `label_mapping.json`, `model_manifest.json`, example API responses — the single source backend and frontend are both checked against |
-| `models/` | Trained model artifacts: `bert_review_sentiment/`, `cnn2d_review_sentiment.pt`, `fake_review_detector*/` (DistilBERT + TF-IDF ensemble, see `MODEL_COMPARISON_AUDIT.md` §9) |
+| `models/` | Trained model artifacts: `bert_review_sentiment/`, `cnn2d_review_sentiment.pt` |
 | `artifacts/` | Fitted preprocessing artifacts: tokenizer, RFM scaler/kmeans, label mapping, split manifest, translation manifest — everything inference needs besides model weights |
 | `config/` | `bert_config.json`, `cnn2d_config.json`, `project_config.json` — training/inference hyperparameters and paths, consumed by `backend/scripts/*` and `backend/app/ml/*` |
-| `data/` | `raw/` (original Olist CSVs), `interim/`, `processed/` (grain-correct enriched parquet datasets, see `DATA_GRAIN_AUDIT.md`), `external/` (Deceptive Opinion Spam Corpus), `uploads/` (runtime batch-upload files, gitignored in spirit — see `data/README.md`) |
+| `data/` | `raw/` (original Olist CSVs), `interim/`, `processed/` (grain-correct enriched parquet datasets, see `DATA_GRAIN_AUDIT.md`), `uploads/` (runtime batch-upload files, gitignored in spirit — see `data/README.md`) |
 | `results/` | Generated metrics, confusion matrices, audits, calibration analysis — JSON, regenerable via `backend/scripts/regenerate_metrics.py`, never hand-edited (`verify_metrics_freshness.py` is the CI guard against that drift) |
 | `reports/` | `executive_analytics_report.md` — business-facing summary |
 | `figures/` | Saved plots referenced by docs/notebook |
@@ -47,13 +47,13 @@ from a 22-issue technical review, not as an initial design choice.
 | `api/` | FastAPI routers |
 | `core/` | `config.py` (settings), `exceptions.py`, `logging.py`, `rate_limit.py`, `security.py` |
 | `db/` | SQLAlchemy models + base (optional persistence, see `DATABASE_SETUP.md`) |
-| `ml/` | **The single ML source of truth.** `cleaning.py`, `preprocessing.py`, `feature_engineering.py`, `data_loading.py`, `datasets.py`, `models.py` (BERT + CNN2D architectures), `training.py`, `evaluation.py`, `explainability.py` (SHAP), `segmentation.py` (RFM/K-Means), `absa.py` + `aspect_extraction.py`, `fake_review_detection.py`, `negation_augmentation.py`, `translation.py`, `eda.py`, `utils.py` |
+| `ml/` | **The single ML source of truth.** `cleaning.py`, `preprocessing.py`, `feature_engineering.py`, `data_loading.py`, `datasets.py`, `models.py` (BERT + CNN2D architectures), `training.py`, `evaluation.py`, `explainability.py` (SHAP), `segmentation.py` (RFM/K-Means), `absa.py` + `aspect_extraction.py`, `negation_augmentation.py`, `translation.py`, `eda.py`, `utils.py` |
 | `repositories/` | Data-access layer (analytics, artifacts, batch, sentiment) |
 | `schemas/` | Pydantic request/response models — the Python side of `shared/api_contract.json` |
 | `services/` | Business logic orchestration between API and `ml/` |
-| `tests/` | 20 pytest files — leakage, data-grain, model registry, rate limiting, CORS, batch upload, fake-review stability, etc. (136 tests, all passing as of this audit) |
+| `tests/` | pytest files — leakage, data-grain, model registry, rate limiting, CORS, batch upload, etc., all passing as of this audit |
 | `migrations/` | Alembic migrations |
-| `scripts/` | CLI entry points: `train.py`, `evaluate.py`, `inference.py`, `run_pipeline.py`, `run_eda.py`, `regenerate_metrics.py`, `export_artifacts.py` (artifact discovery/validation), `verify_metrics_freshness.py`, `check_no_local_paths.py`, plus the fake-review training/testing/stability scripts |
+| `scripts/` | CLI entry points: `train.py`, `evaluate.py`, `inference.py`, `run_pipeline.py`, `run_eda.py`, `regenerate_metrics.py`, `export_artifacts.py` (artifact discovery/validation), `verify_metrics_freshness.py`, `check_no_local_paths.py` |
 | `requirements.txt` / `requirements-dev.txt` | Runtime-only vs. training/test/analysis dependencies, split so the production image doesn't pay for dev tooling (see comments in the file itself for the incident that motivated the split) |
 
 ## Frontend (`frontend/src/`)

@@ -20,9 +20,9 @@ export function explainSentiment(text: string): Promise<ExplainResponse> {
   return apiPost<ExplainResponse>("/sentiment/explain", { text });
 }
 
-// Advanced mode runs the full pipeline (fake-review + aspect analysis) over a
-// sample of rows, which is meaningfully slower than the base pass -- give it
-// more room than the default upload timeout.
+// Advanced mode runs the full pipeline (aspect analysis) over a sample of
+// rows, which is meaningfully slower than the base pass -- give it more
+// room than the default upload timeout.
 const ADVANCED_UPLOAD_TIMEOUT_MS = 300_000;
 
 export function uploadReviewFile(file: File, modelName: ModelName, advanced = false): Promise<FileUploadResponse> {

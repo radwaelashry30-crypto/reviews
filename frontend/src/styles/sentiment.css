@@ -2,7 +2,7 @@
  * Baseera Review Analyzer (Phase 3B). Scoped to `.bsr-sentiment` so nothing
  * here reaches the other, not-yet-reskinned pages. Every component this
  * page renders (SentimentForm, SentimentResult, AspectsBreakdown,
- * FakeCheckBadge, ExplanationCard) is exclusive to this route -- grep-
+ * ExplanationCard) is exclusive to this route -- grep-
  * verified before editing -- so unlike DashboardPage there's no shared
  * component whose legacy CSS vars need remapping here.
  */
@@ -25,7 +25,7 @@
 /* `minmax(0, 1fr)`, not a bare `1fr` -- a plain `1fr` track's minimum width
    defaults to its content's min-content size, and a single long unbreakable
    token in the results (e.g. `ALLOW_EXTERNAL_MODEL_DOWNLOADS=false` or
-   `MODEL_COMPARISON_AUDIT.md` in the fake-check disclaimer) would then set
+   `MODEL_COMPARISON_AUDIT.md` in a disclaimer) would then set
    that minimum wider than the viewport instead of wrapping -- same class of
    bug as the dashboard KPI grid in Phase 3A. */
 @media (max-width: 960px) { .bsr-sentiment-workspace { grid-template-columns: minmax(0, 1fr); } }
@@ -124,14 +124,6 @@
 .bsr-sentiment-aspect-row__value { text-align: right; }
 .bsr-sentiment-aspect-track { height: 6px; border-radius: var(--bsr-radius-full); background: var(--bsr-elevated); overflow: hidden; }
 .bsr-sentiment-aspect-fill { height: 100%; border-radius: var(--bsr-radius-full); }
-
-/* ---------- Fake-check ---------- */
-.bsr-sentiment-authenticity { display: flex; flex-direction: column; gap: var(--bsr-space-2); align-items: flex-start; }
-.bsr-sentiment-authenticity__verdict { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.bsr-sentiment-authenticity__details {
-  display: flex; flex-direction: column; gap: 0.5rem; width: 100%;
-  margin-top: 0.25rem; padding-top: var(--bsr-space-3); border-top: 1px solid var(--bsr-border);
-}
 
 /* ---------- Explanation ---------- */
 .bsr-sentiment-tokens { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: var(--bsr-space-3); }

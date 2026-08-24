@@ -56,11 +56,10 @@ a full TensorFlow dependency (500MB+) as a transitive requirement -- a net
 INCREASE in footprint despite smaller model weights, confirmed by actually
 installing it. Several small DistilBERT-based ABSA models exist on the Hub
 in the right domain (Amazon/laptop reviews, ~269MB) but each has single-
-digit download counts and no independent verification -- exactly the
-"unverified label semantics" risk this project already got burned by once
-(see app/ml/fake_review_detection.py's history). Verifying one properly
-would mean repeating the multi-day training/stability investigation done
-for the fake-review detector, disproportionate for a secondary feature.
+digit download counts and no independent verification -- an "unverified
+label semantics" risk this project treats seriously. Verifying one properly
+would mean a multi-day training/stability investigation, disproportionate
+for a secondary feature.
 
 Fix: sentiment-given-aspect is now computed by finding the SENTENCE(s) of
 the review that discuss the aspect (`aspect_extraction.extract_aspect_sentence`,
@@ -78,10 +77,9 @@ genuinely correctly-isolated but very short clause ("but the packaging was
 crushed.", 5 words), its confidence landed at 50.3% Positive, a near-random
 call it presented with the same confident-looking label as a 98% call.
 `_Cnn2dAspectSentiment` now reports "Neutral" for any prediction within
-`UNCERTAIN_MARGIN` of 0.5, the same honest-uncertainty pattern used for the
-fake-review ensemble's UNCERTAIN band (see fake_review_detection.py) --
-this also fills the "no Neutral class" gap the binary model otherwise has,
-rather than just disclaiming it.
+`UNCERTAIN_MARGIN` of 0.5, an honest-uncertainty pattern that also fills
+the "no Neutral class" gap the binary model otherwise has, rather than
+just disclaiming it.
 """
 from __future__ import annotations
 

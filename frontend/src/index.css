@@ -244,25 +244,17 @@ body {
 .limitations-note { color: var(--text-faint); font-size: 0.85rem; line-height: 1.6; margin: 0.5rem 0 0; }
 .limitations-note code { background: var(--bg-elevated); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.78rem; }
 
-/* ---------- Pipeline follow-up: Task 2 (fake check) + Task 3 (aspects) ---------- */
+/* ---------- Pipeline follow-up: aspects ---------- */
 
 .pipeline-followup {
   display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 1.75rem;
   animation: rise 0.3s ease;
 }
-@media (min-width: 900px) { .pipeline-followup { grid-template-columns: 1fr 1fr; } }
 
-.fake-check-card, .aspects-card {
+.aspects-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
   padding: 1.35rem; box-shadow: var(--shadow-card);
 }
-.fake-check-verdict { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0.5rem 0 0.35rem; }
-/* Ensemble trained + large-scale-validated (see MODEL_COMPARISON_AUDIT.md) --
-   a confident verdict color is warranted here, unlike the earlier checkpoints. */
-.fake-check-card.fake-check-validated { border-color: var(--border); }
-.fake-check-verdict.verdict-real { color: var(--positive, #2e7d5b); }
-.fake-check-verdict.verdict-fake { color: var(--accent-strong); }
-.fake-check-verdict-uncertain { color: var(--text-muted); font-style: italic; font-weight: 500; font-size: 1rem; }
 
 .aspects-list { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
 .aspect-row { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 0.6rem; font-size: 0.85rem; }

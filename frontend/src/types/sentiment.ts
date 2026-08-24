@@ -45,7 +45,7 @@ export interface BatchPredictionResponse {
   n_items: number;
 }
 
-// -- Full pipeline: Task 1 (sentiment) -> Task 2 (fake check, if Negative) -> Task 3 (aspects) --
+// -- Full pipeline: Task 1 (sentiment) -> Task 2 (aspects) --
 
 export interface FullPipelineRequest {
   text: string;
@@ -53,20 +53,6 @@ export interface FullPipelineRequest {
   source_language: "en" | "pt";
   translate: boolean;
   aspects?: string[];
-}
-
-export interface FakeCheckResult {
-  available: boolean;
-  reason?: string;
-  model?: string;
-  is_fake?: boolean;
-  fake_probability?: number;
-  /** "FAKE" / "REAL" / "UNCERTAIN" -- UNCERTAIN when fake_probability lands within the model's own margin of its 0.5 decision boundary, rather than forcing a confident guess. */
-  verdict?: "FAKE" | "REAL" | "UNCERTAIN";
-  label_semantics_verified?: boolean;
-  disclaimer?: string;
-  /** False only when verdict is UNCERTAIN. */
-  reliable?: boolean;
 }
 
 export interface AspectResult {
@@ -85,7 +71,6 @@ export interface AspectsResult {
 
 export interface FullPipelineResponse {
   sentiment: SentimentPrediction;
-  fake_check: FakeCheckResult | null;
   aspects: AspectsResult;
   /** Present when the backend has a database configured (see DATABASE_SETUP.md); null otherwise. */
   analysis_id: string | null;
@@ -136,16 +121,6 @@ export type TimeTrend =
   | { available: true; granularity: "week"; date_column_used: string; points: TimeTrendPoint[] }
   | { available: false; reason: string };
 
-export type FakeReviewSummary =
-  | {
-      available: true;
-      n_screened_negative: number;
-      n_flagged_fake: number;
-      flagged_pct: number;
-      methodology_note: string;
-    }
-  | { available: false; reason: string };
-
 export interface AspectSummaryRow {
   aspect: string;
   n: number;
@@ -183,6 +158,5 @@ export interface FileUploadResponse {
   top_words?: TopWords;
   time_trend?: TimeTrend;
   advanced_sample_size?: number;
-  fake_review_summary?: FakeReviewSummary;
   aspect_summary?: AspectSummary;
 }

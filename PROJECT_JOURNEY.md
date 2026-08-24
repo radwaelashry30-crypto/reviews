@@ -49,11 +49,6 @@ reviews too (a semantic-similarity layer was *also* tried to catch aspects discu
 without their own name, measured unreliable, and **not shipped** — an honest negative
 result, not hidden).
 
-**Fake-review instability — first discovered here.** Testing `jb10231/fake-review-detector`
-directly found predictions flipped from 99.9% to 0.1% confidence under a pure
-meaning-preserving synonym substitution. This became the seed of the multi-week
-investigation documented in full below.
-
 ---
 
 ## Phase 4 — Engineering discipline (#17, #18, #20)
@@ -166,58 +161,7 @@ version 1.9.0 when using version 1.5.2` — the RFM scaler/K-Means artifacts had
 pickled with a locally-installed scikit-learn newer than what `requirements.txt` pins
 for production. This is exactly the failure mode the requirements file's own upper-bound
 comment already warned about. Flagged for re-pickling with a production-matching
-scikit-learn version (the same discipline later applied when building the fake-review
-TF-IDF artifact, using an isolated venv pinned to `scikit-learn==1.5.2` specifically to
-avoid repeating this exact mistake).
-
----
-
-## The fake-review detector — the longest single investigation in this project
-
-Full technical detail: `MODEL_COMPARISON_AUDIT.md` §9. Summary of the actual sequence:
-
-1. **Checkpoint #1** (`jb10231/fake-review-detector`, external): confirmed unreliable —
-   label semantics never verified against its own config, and a pure synonym
-   substitution flipped one verdict from 99.9% to 0.1% confidence. **Rejected.**
-2. **Checkpoint #2** (retrain on `theArijitDas/Fake-Reviews-Dataset`, 97% held-out
-   accuracy): failed the *exact same* paraphrase-stability test the *same way* — proof
-   the problem was structural, not one bad checkpoint. **Rejected.**
-3. **A candidate replacement dataset** (Amazon "spam/non-spam", 7.57M reviews) was
-   downloaded and inspected — found to be a 100% deterministic proxy for star rating
-   (every 4–5★ review labeled "spam", every 1–3★ labeled "not spam", zero overlap), not
-   a genuine spam judgment at all. **Rejected before any training time was spent on it.**
-4. **The dataset actually used**: Ott et al.'s Deceptive Opinion Spam Corpus (Cornell,
-   peer-reviewed) — genuinely human-verified deceptive-vs-truthful labels.
-5. **Four training iterations**, each measured against the same held-out split:
-   plain fine-tuning → paraphrase-consistency loss (weight 1.0, then 4.0) → consistency
-   loss extended to cover length-sensitivity too. Each iteration closed one measured gap
-   and, in one case, revealed a *new* one (DistilBERT's length-sensitivity persisted even
-   after two dedicated attempts to fix it).
-6. **A parallel TF-IDF + Logistic Regression model** was trained on the same data —
-   found to be inherently more length-robust (no positional/attention mechanism for
-   length to act through) but more prone to small, boundary-adjacent disagreements.
-7. **Ensembling the two** (mean probability) combined their complementary strengths.
-8. **Statistically meaningful validation** (not 6 hand-picked examples): a WordNet
-   paraphrase was generated for **every one of the 320 held-out test reviews**, with
-   Wilson 95% confidence intervals computed on the resulting flip rate — the ensemble:
-   0/300 confident flips (95% CI upper bound 1.3%), 6.2% honestly reported as
-   `UNCERTAIN` rather than forced into a guess.
-9. **A second, purely engineering constraint**: the DistilBERT component alone is
-   ~257MB — a real OOM risk on Render's free tier (the exact kind of problem from
-   Incident 1). Solved with a `FAKE_REVIEW_TFIDF_ONLY` mode: the ~350KB TF-IDF
-   component alone, independently measured at 0/188 confident flips, at the cost of a
-   higher (41.2%) abstain rate. **This is what the live deployment actually runs.**
-10. **Enabled live and verified directly**: a real `POST /pipeline` call against
-    production returned a correctly-labeled `UNCERTAIN` verdict with the right
-    disclaimer text, and `/health` stayed green before and after — confirmed no memory
-    regression.
-11. **Published**: model weights + a full model card on Hugging Face
-    (`huggingface.co/RadwaElashry2030/baseera-fake-review-ensemble`), cross-linked from
-    both `README.md` and `MODEL_COMPARISON_AUDIT.md`.
-
-**Honest, unresolved limitation carried forward**: trained on hotel reviews, applied
-here to Olist e-commerce reviews — a real domain shift, not separately measurable
-because no genuinely-labeled Olist fake-review dataset exists.
+scikit-learn version.
 
 ---
 

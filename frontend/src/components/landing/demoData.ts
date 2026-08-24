@@ -93,7 +93,6 @@ export const CAPABILITIES: Array<{ title: string; description: string }> = [
   { title: "Sentiment Analysis", description: "BERT and CNN2D models classify each review as positive or negative from its text alone." },
   { title: "Aspect-Based Insights", description: "Sentiment broken down per aspect -- delivery, product quality, price, service, packaging." },
   { title: "Batch Review Processing", description: "Upload a CSV of reviews and get predictions, aspects, and a confidence distribution back in one pass." },
-  { title: "Fake Review Detection", description: "An experimental screen over negative reviews, flagged as exploratory and not a validated fraud signal." },
   { title: "Customer Segmentation", description: "RFM + K-Means groups customers into Champion, Loyal, Potential Loyal, and At Risk segments." },
   { title: "Product & Seller Analytics", description: "Category performance and seller-level delivery/revenue metrics from the enriched order data." },
   { title: "Geographic Analytics", description: "State-level delivery performance across the dataset's coverage area." },
@@ -104,7 +103,7 @@ export const PRIMARY_CAPABILITY_COUNT = 3;
 
 export const JOURNEY_STAGES: Array<{ stage: string; title: string; description: string }> = [
   { stage: "Collect", title: "Bring reviews in", description: "Analyze a single review by hand, or upload a CSV batch for bulk processing." },
-  { stage: "Analyze", title: "Score sentiment", description: "BERT/CNN2D classify sentiment; an experimental screen flags reviews worth a second look." },
+  { stage: "Analyze", title: "Score sentiment", description: "BERT/CNN2D classify each review as positive or negative from its text alone." },
   { stage: "Understand", title: "Surface the aspects", description: "Aspect-level scoring shows which part of the experience -- delivery, price, service -- is driving the sentiment." },
   { stage: "Decide", title: "Act with confidence", description: "Pain points and trends turn into rule-based, honestly-labeled recommendations a team can act on." },
 ];

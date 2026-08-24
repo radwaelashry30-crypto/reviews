@@ -134,27 +134,13 @@ function buildTimeTrendHtml(result: FileUploadResponse): string {
   </div>`;
 }
 
-/** Fake-review + aspect summary for the offline export, only present when the
- * upload ran with advanced=true. */
+/** Aspect summary for the offline export, only present when the upload ran
+ * with advanced=true. */
 function buildAdvancedSummaryHtml(result: FileUploadResponse): string {
-  const fake = result.fake_review_summary;
   const aspects = result.aspect_summary;
-  if (!fake && !aspects) return "";
+  if (!aspects) return "";
 
-  const fakeHtml = fake
-    ? `<div class="chart-box">
-        <h3>Experimental Authenticity Signal</h3>
-        ${
-          fake.available
-            ? `<div class="value" style="color:#f4b942;">${fake.flagged_pct.toFixed(1)}%</div>
-               <div class="note" style="margin-top:0.2rem;">${fake.n_flagged_fake.toLocaleString()} of ${fake.n_screened_negative.toLocaleString()} negative reviews show an elevated experimental signal -- not proof of fraud.</div>`
-            : `<p class="note">Not available (${escapeHtml(fake.reason)}).</p>`
-        }
-      </div>`
-    : "";
-
-  const aspectsHtml = aspects
-    ? `<div class="chart-box">
+  const aspectsHtml = `<div class="chart-box">
         <h3>Aspect Breakdown</h3>
         ${
           aspects.available
@@ -164,10 +150,9 @@ function buildAdvancedSummaryHtml(result: FileUploadResponse): string {
               <p class="note">Positive/Neutral/Negative are computed among reviews that mentioned that aspect only (see the Mentioned column).</p>`
             : `<p class="note">Not available (${escapeHtml(aspects.reason)}).</p>`
         }
-      </div>`
-    : "";
+      </div>`;
 
-  return `<div class="charts-row">${fakeHtml}${aspectsHtml}</div>`;
+  return `<div class="charts-row">${aspectsHtml}</div>`;
 }
 
 /** Self-contained HTML dashboard snapshot for one classified file -- opens
@@ -244,7 +229,7 @@ function buildDashboardHtml(result: FileUploadResponse): string {
     <tbody>${rows}</tbody>
   </table>
   ${result.results.length > 500 ? `<p class="note">Showing first 500 of ${result.results.length} rows. Download the CSV from the app for the full list.</p>` : ""}
-  <p class="note">Sentiment predictions are probabilistic and dataset-dependent, not objective judgments. The experimental authenticity signal, where shown, is not proof of fraud.</p>
+  <p class="note">Sentiment predictions are probabilistic and dataset-dependent, not objective judgments.</p>
 </body></html>`;
 }
 
@@ -389,8 +374,8 @@ export function BatchUploadPage() {
               <label className="bsr-batch-checkbox-row">
                 <input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} />
                 <span>
-                  Advanced analysis -- adds an experimental authenticity signal and aspect breakdown over a sample of up to 100 rows.
-                  Slower; output may report "not available" if those optional models aren't loaded on this deployment.
+                  Advanced analysis -- adds an aspect breakdown over a sample of up to 100 rows.
+                  Slower; output may report "not available" if that optional model isn't loaded on this deployment.
                 </span>
               </label>
             </div>
@@ -551,40 +536,18 @@ export function BatchUploadPage() {
               </SurfaceCard>
             )}
 
-            {(result.fake_review_summary || result.aspect_summary) && (
-              <div className="bsr-batch-chart-grid">
-                {result.fake_review_summary && (
-                  <SurfaceCard className="bsr-batch-panel" aria-label="Experimental authenticity signal">
-                    <h3 className="bsr-h5" style={{ marginTop: 0 }}>Experimental authenticity signal</h3>
-                    {result.fake_review_summary.available ? (
-                      <>
-                        <p className="bsr-sm" style={{ color: "var(--bsr-text-muted)" }}>
-                          Elevated signal in <strong style={{ color: "var(--bsr-text)" }}>{formatPercent(result.fake_review_summary.flagged_pct)}</strong> of screened negative reviews
-                        </p>
-                        <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>
-                          {formatNumber(result.fake_review_summary.n_flagged_fake)} of {formatNumber(result.fake_review_summary.n_screened_negative)} negative reviews -- this is not proof any of them are fake.
-                        </p>
-                        <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)", marginTop: "var(--bsr-space-2)" }}>{result.fake_review_summary.methodology_note}</p>
-                      </>
-                    ) : (
-                      <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>Not available ({result.fake_review_summary.reason}).</p>
-                    )}
-                  </SurfaceCard>
+            {result.aspect_summary && (
+              <SurfaceCard className="bsr-batch-panel" aria-label="Aspect breakdown">
+                <h3 className="bsr-h5" style={{ marginTop: 0 }}>Aspect breakdown</h3>
+                {result.aspect_summary.available ? (
+                  <>
+                    <AspectBreakdownChart data={result.aspect_summary.per_aspect} />
+                    <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)", marginTop: "var(--bsr-space-3)" }}>{result.aspect_summary.methodology_note}</p>
+                  </>
+                ) : (
+                  <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>Not available ({result.aspect_summary.reason}).</p>
                 )}
-                {result.aspect_summary && (
-                  <SurfaceCard className="bsr-batch-panel" aria-label="Aspect breakdown">
-                    <h3 className="bsr-h5" style={{ marginTop: 0 }}>Aspect breakdown</h3>
-                    {result.aspect_summary.available ? (
-                      <>
-                        <AspectBreakdownChart data={result.aspect_summary.per_aspect} />
-                        <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)", marginTop: "var(--bsr-space-3)" }}>{result.aspect_summary.methodology_note}</p>
-                      </>
-                    ) : (
-                      <p className="bsr-sm" style={{ color: "var(--bsr-text-faint)" }}>Not available ({result.aspect_summary.reason}).</p>
-                    )}
-                  </SurfaceCard>
-                )}
-              </div>
+              </SurfaceCard>
             )}
 
             <SurfaceCard className="bsr-batch-panel" aria-label="Row-level results">

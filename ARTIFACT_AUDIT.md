@@ -27,7 +27,7 @@ No raw Olist CSVs (`olist_orders_dataset.csv` etc.) are present anywhere in the 
 
 ## 2. Notebook structure summary
 
-151 cells across 14 sections: Configuration → Imports → Utility Functions → Data Loading → Data Cleaning → Translation → EDA → Customer/Seller Behavior → Export → Sentiment Preprocessing → Dataset Splitting → Model Training (BERT §9.1, CNN2D §9.2) → Evaluation → Explainability (SHAP) → Fake Review Detection → ABSA → Insights/Recommendations → **Prediction Interface (cell 149, buggy) → Fake-News placeholder (cell 150)**.
+151 cells across 13 sections: Configuration → Imports → Utility Functions → Data Loading → Data Cleaning → Translation → EDA → Customer/Seller Behavior → Export → Sentiment Preprocessing → Dataset Splitting → Model Training (BERT §9.1, CNN2D §9.2) → Evaluation → Explainability (SHAP) → ABSA → Insights/Recommendations → **Prediction Interface (cell 149, buggy) → Fake-News placeholder (cell 150)**.
 
 ## 3. Model artifact selection
 
@@ -86,5 +86,5 @@ The 9 raw Olist CSVs are **not present** in the originally uploaded `update/` fo
 | Raw 9 Olist CSVs | **Present** under `data/raw/` (located at `Fake news/E-commerce/Dataset/`); `run_pipeline.py --clean --eda --segment` has been run against them for real in this delivery |
 | Retraining BERT/CNN2D on the corrected split | Not run in this delivery (would take ~30+ min CPU for BERT); `train.py` implements it and is ready to run |
 | SHAP explainability | `shap` package not installed in the verification environment; `explainability.py` degrades gracefully and reports `available: false` rather than crashing — install `shap` to enable |
-| Fake-review / ABSA modules | Require downloading external HF models (`jb10231/fake-review-detector`, `yangheng/deberta-v3-base-absa-v1.1`); not downloaded in this delivery (`ALLOW_EXTERNAL_MODEL_DOWNLOADS=false` by default) |
+| ABSA module | Requires downloading an external HF model (`yangheng/deberta-v3-base-absa-v1.1`); not downloaded in this delivery (`ALLOW_EXTERNAL_MODEL_DOWNLOADS=false` by default) |
 | Docker build | `docker compose config` validated successfully (both services resolve correctly, ports/env/build args all correct). `docker compose build` could not complete in this session — the Docker CLI is present (v29.1.3) but the daemon requires elevated privileges not available in this sandboxed session ("must be run with elevated privileges to connect"). Run `docker compose build && docker compose up` yourself with normal Docker Desktop permissions to build the images. |

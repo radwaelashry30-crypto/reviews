@@ -94,15 +94,11 @@ Same test set, both models: BERT wins on accuracy/precision/F1/MCC; CNN2D has a 
 
 Fine-tuned BERT, PartitionExplainer, sample size 8, drawn from the stored test split. Top tokens for negative predictions align with delivery/complaint language ("not delivered", "wrong", "broken"); positive predictions align with quality/speed language ("excellent", "wonderful", "on time"). See `backend/app/ml/explainability.py`.
 
-## 24. Fake-review limitations
-
-0/11,407 negative reviews flagged as fake by `jb10231/fake-review-detector` — documented as likely domain shift, NOT proof of authenticity. See README §18.
-
-## 25. ABSA findings
+## 24. ABSA findings
 
 Sentiment-given-aspect over {delivery, product quality, price, customer service, packaging}, n=200 reviews. Delivery aspect shows a roughly even Positive/Negative split, consistent with delivery being the dominant driver of both praise and complaint in the free-text review data.
 
-## 26. Business recommendations
+## 25. Business recommendations
 
 1. **Launch a structured retention program** targeting "At Risk"/"Potential Loyal" RFM segments (51,787 + 38,286 = 90,073 customers, 94% of the base) — highest leverage given the 96.9% one-time-buyer rate.
 2. **Tighten carrier SLAs and open direct performance reviews with the worst-late-delivery-rate sellers/states.**
@@ -110,10 +106,10 @@ Sentiment-given-aspect over {delivery, product quality, price, customer service,
 4. **Deploy the BERT sentiment classifier operationally** to flag negative-sentiment reviews for CS follow-up as soon as they're written, without waiting on the star rating alone.
 5. **Invest in a Southeast-anchored regional distribution hub** given demand concentration.
 
-## 27. Technical limitations
+## 26. Technical limitations
 
-Sample-dependent metrics; CPU-only verification in this delivery (GPU would materially speed up BERT training/eval); fake-review/ABSA modules unvalidated for this domain; raw 9 CSVs not present in this delivery (derived datasets used instead — see `DATA_GRAIN_AUDIT.md` §4).
+Sample-dependent metrics; CPU-only verification in this delivery (GPU would materially speed up BERT training/eval); ABSA module unvalidated for this domain; raw 9 CSVs not present in this delivery (derived datasets used instead — see `DATA_GRAIN_AUDIT.md` §4).
 
-## 28. Responsible-use statement
+## 27. Responsible-use statement
 
-See README §41. Sentiment predictions are probabilistic tools to prioritize human review, not automated judgments about customers or sellers.
+See README §40. Sentiment predictions are probabilistic tools to prioritize human review, not automated judgments about customers or sellers.

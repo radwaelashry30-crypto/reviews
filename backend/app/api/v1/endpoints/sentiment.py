@@ -87,12 +87,12 @@ def predict_batch(request: Request, payload: BatchPredictionRequest, registry: M
 @router.post("/pipeline")
 @limiter.limit("20/minute")
 def full_pipeline(request: Request, payload: FullPipelineRequest, registry: ModelRegistry = Depends(get_model_registry)):
-    """Task 1 (sentiment) -> Task 2 (fake-vs-real, only if Negative) -> Task 3 (aspects, always).
+    """Task 1 (sentiment) -> Task 2 (aspects, always).
 
-    Task 2/3 depend on large external models (256MB / 706MB) not loaded at
-    startup. On a RAM-constrained deployment they report
-    `"available": false` inside their own result object rather than failing
-    the whole request -- Task 1's sentiment result is always returned.
+    Task 2 depends on a large external model (706MB) not loaded at startup.
+    On a RAM-constrained deployment it reports `"available": false` inside
+    its own result object rather than failing the whole request -- Task 1's
+    sentiment result is always returned.
     """
     result = advanced_sentiment_service.run_full_pipeline(
         registry, payload.text, model_name=payload.model_name,
@@ -139,9 +139,9 @@ async def upload_file(
     Auto-detects the review-text column (see file_batch_service.TEXT_COLUMN_CANDIDATES).
     Processes synchronously, capped at file_batch_service.MAX_FILE_ROWS rows.
 
-    `advanced=true` additionally runs fake-review screening and aspect-based
-    sentiment over a bounded sample of rows (file_batch_service.ADVANCED_SAMPLE_SIZE)
-    -- slower, so it's opt-in rather than the default.
+    `advanced=true` additionally runs aspect-based sentiment over a bounded
+    sample of rows (file_batch_service.ADVANCED_SAMPLE_SIZE) -- slower, so
+    it's opt-in rather than the default.
     """
     if not file.filename or not file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
         raise InvalidRequestError("Upload a .csv or .xlsx file.")

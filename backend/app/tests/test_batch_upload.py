@@ -62,7 +62,6 @@ def test_upload_file_basic_includes_top_words_and_time_trend(client):
     assert len(data["time_trend"]["points"]) >= 1
 
     # advanced=false means these keys are simply absent
-    assert "fake_review_summary" not in data
     assert "aspect_summary" not in data
 
 
@@ -77,7 +76,7 @@ def test_upload_file_without_date_column_reports_time_trend_unavailable(client):
     assert data["time_trend"]["available"] is False
 
 
-def test_upload_file_advanced_includes_fake_and_aspect_summaries(client):
+def test_upload_file_advanced_includes_aspect_summary(client):
     if not _bert_available(client):
         pytest.skip("Fine-tuned BERT artifact not available in this environment.")
 
@@ -88,9 +87,6 @@ def test_upload_file_advanced_includes_fake_and_aspect_summaries(client):
 
     assert "advanced_sample_size" in data
     assert data["advanced_sample_size"] >= 1
-
-    assert "fake_review_summary" in data
-    assert "available" in data["fake_review_summary"]
 
     assert "aspect_summary" in data
     assert "available" in data["aspect_summary"]

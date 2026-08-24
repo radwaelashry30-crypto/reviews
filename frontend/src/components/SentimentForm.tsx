@@ -1,8 +1,8 @@
 import { FormEvent, useId, useState } from "react";
 import { Button } from "./ui/Button";
 import { SparkleIcon, TrashIcon } from "./sentiment/icons";
-import { LANGUAGE_OPTIONS, MODEL_OPTIONS } from "../utils/constants";
-import type { FullPipelineRequest, ModelName } from "../types/sentiment";
+import { ABSA_MODEL_OPTIONS, LANGUAGE_OPTIONS, MODEL_OPTIONS } from "../utils/constants";
+import type { AbsaModel, FullPipelineRequest, ModelName } from "../types/sentiment";
 
 const MAX_LENGTH = 2000;
 const SAMPLE_REVIEW =
@@ -17,6 +17,7 @@ interface Props {
 export function SentimentForm({ onSubmit, loading }: Props) {
   const [text, setText] = useState("");
   const [modelName, setModelName] = useState<ModelName>("bert");
+  const [absaModel, setAbsaModel] = useState<AbsaModel>("cnn2d");
   const [sourceLanguage, setSourceLanguage] = useState<"en" | "pt">("en");
   const [translate, setTranslate] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -36,7 +37,7 @@ export function SentimentForm({ onSubmit, loading }: Props) {
     e.preventDefault();
     setTouched(true);
     if (isBlank || loading) return;
-    onSubmit({ text, model_name: modelName, source_language: sourceLanguage, translate });
+    onSubmit({ text, model_name: modelName, source_language: sourceLanguage, translate, absa_model: absaModel });
   }
 
   function fillSample() {
@@ -100,6 +101,14 @@ export function SentimentForm({ onSubmit, loading }: Props) {
           Model
           <select className="bsr-sentiment-select" value={modelName} onChange={(e) => setModelName(e.target.value as ModelName)}>
             {MODEL_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="bsr-sentiment-field-label">
+          ABSA model
+          <select className="bsr-sentiment-select" value={absaModel} onChange={(e) => setAbsaModel(e.target.value as AbsaModel)}>
+            {ABSA_MODEL_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>

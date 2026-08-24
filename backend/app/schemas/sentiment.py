@@ -59,6 +59,10 @@ class FullPipelineRequest(BaseModel):
     source_language: Literal["en", "pt"] = "en"
     translate: bool = False
     aspects: list[str] | None = None
+    # "cnn2d" (default, safe fallback -- always loaded, no extra memory cost)
+    # or "deberta" (optional, purpose-trained ABSA checkpoint, lazy-loaded
+    # and ~738MB -- see app/ml/absa.py::load_deberta_absa_pipeline).
+    absa_model: Literal["cnn2d", "deberta"] = "cnn2d"
 
     @field_validator("text")
     @classmethod

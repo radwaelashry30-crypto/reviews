@@ -47,12 +47,15 @@ export interface BatchPredictionResponse {
 
 // -- Full pipeline: Task 1 (sentiment) -> Task 2 (aspects) --
 
+export type AbsaModel = "cnn2d" | "deberta";
+
 export interface FullPipelineRequest {
   text: string;
   model_name: ModelName;
   source_language: "en" | "pt";
   translate: boolean;
   aspects?: string[];
+  absa_model: AbsaModel;
 }
 
 export interface AspectResult {

@@ -89,15 +89,17 @@ def predict_batch(request: Request, payload: BatchPredictionRequest, registry: M
 def full_pipeline(request: Request, payload: FullPipelineRequest, registry: ModelRegistry = Depends(get_model_registry)):
     """Task 1 (sentiment) -> Task 2 (aspects, always).
 
-    Task 2 depends on a large external model (706MB) not loaded at startup.
-    On a RAM-constrained deployment it reports `"available": false` inside
-    its own result object rather than failing the whole request -- Task 1's
-    sentiment result is always returned.
+    `absa_model` selects which model scores Task 2: `"cnn2d"` (default) is
+    already loaded alongside Task 1, no extra memory cost. `"deberta"` is an
+    optional, purpose-trained ABSA checkpoint (~738MB), lazy-loaded on first
+    use and never loaded at startup. Either way, a loading failure reports
+    `"available": false` inside its own result object rather than failing
+    the whole request -- Task 1's sentiment result is always returned.
     """
     result = advanced_sentiment_service.run_full_pipeline(
         registry, payload.text, model_name=payload.model_name,
         source_language=payload.source_language, translate=payload.translate,
-        aspects=payload.aspects,
+        aspects=payload.aspects, absa_method=payload.absa_model,
     )
     aspects_for_db = result["aspects"]["aspects"] if result["aspects"].get("available") else None
     analysis_id = persistence_service.try_save_analysis(payload.text, result["sentiment"], aspects_for_db)

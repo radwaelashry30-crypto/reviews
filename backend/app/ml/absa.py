@@ -61,15 +61,31 @@ label semantics" risk this project treats seriously. Verifying one properly
 would mean a multi-day training/stability investigation, disproportionate
 for a secondary feature.
 
-Fix: sentiment-given-aspect is now computed by finding the SENTENCE(s) of
-the review that discuss the aspect (`aspect_extraction.extract_aspect_sentence`,
-the same RAKE-based mechanism as the presence gate above, applied per-
-sentence) and scoring just that clause with CNN2D -- the project's own
-binary sentiment classifier, already fully trained, evaluated, and loaded
-in memory for Task 1. Zero additional model weights, zero new dependencies.
-Honest tradeoff: clause-level sentiment is an approximation of aspect-level
-sentiment, not a purpose-trained ABSA model -- stated explicitly in
-`methodology_note` below.
+Fix (default path): sentiment-given-aspect is computed by finding the
+SENTENCE(s) of the review that discuss the aspect
+(`aspect_extraction.extract_aspect_sentence`, the same RAKE-based mechanism
+as the presence gate above, applied per-sentence) and scoring just that
+clause with CNN2D -- the project's own binary sentiment classifier, already
+fully trained, evaluated, and loaded in memory for Task 1. Zero additional
+model weights, zero new dependencies. Honest tradeoff: clause-level
+sentiment is an approximation of aspect-level sentiment, not a
+purpose-trained ABSA model -- stated explicitly in `methodology_note` below.
+
+FOURTH CHANGE: the 738MB footprint above is why DeBERTa stays opt-in, not
+why it's unavailable. `yangheng/deberta-v3-base-absa-v1.1` is now offered as
+an explicit, lazily-loaded alternative (`load_deberta_absa_pipeline`,
+selected per-request via `absa_method="deberta"`) for callers who accept the
+memory cost in exchange for a purpose-trained ABSA checkpoint instead of the
+CNN2D approximation. It is never loaded at startup and never loaded unless a
+caller actually requests it -- see `ModelRegistry.get_absa_pipeline`. Its
+input contract (`pipe(text, text_pair=aspect)`) and label mapping
+(`{0: "Negative", 1: "Neutral", 2: "Positive"}`) were verified directly
+against the checkpoint's own `config.json`, not assumed; the labels already
+match this project's existing sentiment vocabulary, so no extra
+normalization step is needed. This project has not benchmarked either path
+against Olist-specific aspect-level ground truth (none exists for this
+dataset -- see below), so neither is described as more accurate than the
+other here.
 
 THIRD CHANGE (found via live testing after shipping the fix above): CNN2D
 was trained on full review texts, not short isolated clauses -- on a
@@ -90,7 +106,9 @@ from app.ml.aspect_extraction import extract_aspect_sentence
 
 ABSA_ASPECTS = ["delivery", "product quality", "price", "customer service", "packaging"]
 DEFAULT_SAMPLE_SIZE = 200
-ABSA_METHOD_DESCRIPTION = "CNN2D sentiment over the RAKE-located aspect sentence (see app/ml/absa.py module docstring)"
+ABSA_METHOD_DESCRIPTION_CNN = "CNN2D sentiment over the RAKE-located aspect sentence (see app/ml/absa.py module docstring) -- an ABSA approximation, not a purpose-trained ABSA model"
+ABSA_METHOD_DESCRIPTION_DEBERTA = "yangheng/deberta-v3-base-absa-v1.1 -- a purpose-trained Aspect-Based Sentiment Analysis checkpoint, not benchmarked against Olist-specific ground truth"
+ABSA_MODEL_DEBERTA = "yangheng/deberta-v3-base-absa-v1.1"
 
 NOT_MENTIONED_LABEL = "Not mentioned"
 
@@ -195,13 +213,42 @@ def load_absa_pipeline(cnn_model=None, cnn_tokenizer=None, device: str = "cpu"):
     return _Cnn2dAspectSentiment(cnn_model, cnn_tokenizer, device)
 
 
-def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) -> dict:
+def load_deberta_absa_pipeline(device: int = -1):
+    """Loads the optional, purpose-trained DeBERTa-v3 ABSA checkpoint
+    (~738MB) on first call. Never called at startup; only invoked when a
+    caller explicitly requests `absa_method="deberta"` -- see
+    ModelRegistry.get_absa_pipeline.
+
+    Input contract and label mapping verified directly against the
+    checkpoint's own model card and `config.json` (not assumed): it expects
+    a text/aspect pair via the pipeline's `text_pair` argument, and its
+    `id2label` is `{0: "Negative", 1: "Neutral", 2: "Positive"}` -- these are
+    the exact strings HF's `text-classification` pipeline returns in
+    `pred["label"]`, already matching this project's sentiment vocabulary
+    with no further normalization needed. Raises on failure (network error,
+    package missing, OOM); the caller is responsible for catching this and
+    reporting `available: false` rather than letting it crash the request."""
+    from transformers import pipeline
+
+    return pipeline("text-classification", model=ABSA_MODEL_DEBERTA, device=device)
+
+
+def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None, absa_method: str = "cnn2d") -> dict:
     """Score one review across each aspect with an already-loaded pipeline.
     Used by the live inference pipeline (Task 3).
 
     Each aspect is gated behind `_aspect_mentioned()` first -- see module
     docstring. Aspects with no keyword match are reported as "Not mentioned"
-    without ever calling the model, instead of a hallucinated verdict."""
+    without ever calling the model, instead of a hallucinated verdict. This
+    gate applies identically regardless of `absa_method` -- CNN2D and
+    DeBERTa share the exact same presence check, only the scoring call for
+    a *mentioned* aspect differs.
+
+    `absa_method` only selects which already-loaded `pipe` this is scoring
+    with (both CNN2D's callable and the DeBERTa HF pipeline share the same
+    `pipe(text, text_pair=aspect, truncation=True) -> [{"label", "score"}]`
+    call shape), and which description/methodology text to report -- it does
+    not change the gating or call logic itself."""
     aspects = aspects or ABSA_ASPECTS
     records = []
     for aspect in aspects:
@@ -213,21 +260,37 @@ def analyze_aspects_single(pipe, text: str, aspects: list[str] | None = None) ->
             records.append({"aspect": aspect, "sentiment": pred["label"], "confidence": round(float(pred["score"]), 4)})
         except Exception as e:
             records.append({"aspect": aspect, "sentiment": "UNKNOWN", "confidence": 0.0, "error": str(e)})
+
+    methodology = (
+        "Sentiment-given-aspect over a fixed candidate aspect list. An aspect is only scored "
+        "if RAKE keyphrase extraction finds the review's own text actually discussing it "
+        "(domain-general presence check, not a fixed keyword search); otherwise it's reported "
+        "as \"Not mentioned\" rather than guessed. "
+    )
+    if absa_method == "deberta":
+        model_desc = ABSA_METHOD_DESCRIPTION_DEBERTA
+        methodology += (
+            "The score itself comes from a purpose-trained ABSA checkpoint "
+            "(DeBERTa-v3, yangheng/deberta-v3-base-absa-v1.1), given both the located clause and "
+            "the selected aspect as a text/aspect pair, per the checkpoint's verified input "
+            "contract. Not benchmarked against Olist-specific aspect-level ground truth."
+        )
+    else:
+        model_desc = ABSA_METHOD_DESCRIPTION_CNN
+        methodology += (
+            "The score itself comes from CNN2D (the project's own binary sentiment classifier) "
+            "run over just the located clause, not a purpose-trained ABSA model -- clause-level "
+            "sentiment is an approximation of aspect-level sentiment. Predictions close to CNN2D's "
+            "50% decision boundary (common on very short clauses, which the model wasn't trained on "
+            "directly) are reported as \"Neutral\" rather than a forced, overconfident-looking call. "
+            "See app/ml/absa.py module docstring."
+        )
+
     return {
         "available": True,
-        "model": ABSA_METHOD_DESCRIPTION,
+        "model": model_desc,
         "aspects": records,
-        "methodology_note": (
-            "Sentiment-given-aspect over a fixed candidate aspect list. An aspect is only scored "
-            "if RAKE keyphrase extraction finds the review's own text actually discussing it "
-            "(domain-general presence check, not a fixed keyword search); otherwise it's reported "
-            "as \"Not mentioned\" rather than guessed. The score itself comes from CNN2D (the "
-            "project's own binary sentiment classifier) run over just the located clause, not a "
-            "purpose-trained ABSA model -- clause-level sentiment is an approximation of "
-            "aspect-level sentiment. Predictions close to CNN2D's 50% decision boundary (common on "
-            "very short clauses, which the model wasn't trained on directly) are reported as "
-            "\"Neutral\" rather than a forced, overconfident-looking call. See app/ml/absa.py module docstring."
-        ),
+        "methodology_note": methodology,
     }
 
 
@@ -287,7 +350,7 @@ def run_absa(
 
     return {
         "available": True,
-        "model": ABSA_METHOD_DESCRIPTION,
+        "model": ABSA_METHOD_DESCRIPTION_CNN,
         "aspects": aspects,
         "sample_size": len(sample),
         "n_predictions": len(results),

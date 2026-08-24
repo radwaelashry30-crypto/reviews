@@ -43,16 +43,20 @@ class ModelRegistry:
         self.statuses: dict[str, ArtifactStatus] = {}
         # SHAP explainer: only needs the `shap` package (already installed
         # locally) and the BERT model that's already loaded -- no separate
-        # external download or gating flag needed. ABSA (Task 3) has no
-        # equivalent entry: it runs on CNN2D, already loaded for Task 1, so
-        # there's nothing separate to lazy-load or cache -- see get_absa_pipeline().
+        # external download or gating flag needed. ABSA (Task 3) defaults to
+        # CNN2D, already loaded for Task 1, so that path has nothing separate
+        # to lazy-load or cache -- see get_absa_pipeline(). The optional
+        # DeBERTa-v3 ABSA path below is the one exception: it's a genuinely
+        # separate, ~738MB download, lazy-loaded only when a caller
+        # explicitly asks for it.
         self.shap_explainer = None
+        self.absa_deberta_pipe = None
         # FastAPI runs sync `def` endpoints in a thread pool, so two
         # concurrent first requests could both see `self.shap_explainer is
-        # None` and both start loading it at once. One lock per lazily
-        # loaded resource (not one shared lock) so each load doesn't block
-        # a concurrent load unrelated to it.
-        self._locks = {name: threading.Lock() for name in ("shap",)}
+        # None` (or `self.absa_deberta_pipe is None`) and both start loading
+        # it at once. One lock per lazily loaded resource (not one shared
+        # lock) so each load doesn't block a concurrent load unrelated to it.
+        self._locks = {name: threading.Lock() for name in ("shap", "absa_deberta")}
 
     def _lazy_load(self, name: str, attr: str, loader):
         """Thread-safe lazy load: check, lock, check again. `loader` is
@@ -205,11 +209,31 @@ class ModelRegistry:
         device_idx = 0 if self.device == "cuda" else -1
         return self._lazy_load("shap", "shap_explainer", lambda: load_shap_explainer(self.bert_model, self.bert_tokenizer, device=device_idx))
 
-    def get_absa_pipeline(self):
-        """Sentiment-given-aspect over CNN2D (see app/ml/absa.py module
-        docstring for why this replaced the ~738MB external ABSA model).
-        No separate download or lazy-load needed -- CNN2D is already loaded
-        for Task 1, so this is only unavailable if CNN2D itself isn't."""
+    def get_absa_pipeline(self, absa_method: str = "cnn2d"):
+        """Returns the ABSA pipeline for the requested method.
+
+        Default (`"cnn2d"`): sentiment-given-aspect over CNN2D (see
+        app/ml/absa.py module docstring for why this is the default -- the
+        ~738MB external DeBERTa checkpoint below is a real memory risk on a
+        free-tier deployment). No separate download or lazy-load needed --
+        CNN2D is already loaded for Task 1, so this is only unavailable if
+        CNN2D itself isn't.
+
+        `"deberta"`: the optional, purpose-trained DeBERTa-v3 ABSA checkpoint
+        (see app/ml/absa.py::load_deberta_absa_pipeline for its verified
+        input contract and label mapping). Lazy-loaded on first request via
+        the same thread-safe `_lazy_load` pattern as get_shap_explainer --
+        never loaded at startup, never loaded unless explicitly requested. A
+        loading failure (network, OOM, missing package) is caught by
+        `_lazy_load`, reported as an `absa_deberta` status with a reason, and
+        returns None here -- callers must never crash on this, and must never
+        substitute a guessed prediction for the missing model."""
+        if absa_method == "deberta":
+            from app.ml.absa import load_deberta_absa_pipeline
+
+            device_idx = 0 if self.device == "cuda" else -1
+            return self._lazy_load("absa_deberta", "absa_deberta_pipe", lambda: load_deberta_absa_pipeline(device=device_idx))
+
         if self.cnn_model is None or self.cnn_tokenizer is None:
             self.statuses["absa"] = ArtifactStatus("absa", "unavailable", None, "CNN2D not available (required for aspect-sentiment scoring)")
             return None

@@ -25,6 +25,14 @@ torch>=2.2,<2.6
 transformers>=4.40,<4.50
 tokenizers>=0.19,<0.21
 sentencepiece>=0.2,<0.3
+# The optional DeBERTa-v3 ABSA checkpoint (yangheng/deberta-v3-base-absa-v1.1,
+# see app/ml/absa.py::load_deberta_absa_pipeline) ships no tokenizer.json, so
+# AutoTokenizer converts its raw SentencePiece model to a fast tokenizer at
+# load time -- verified live (sys.modules trace) that this conversion path
+# actively imports google.protobuf, which transformers/tokenizers/sentencepiece
+# do not pull in on their own. Without this pin, that lazy load fails in any
+# clean environment built from this file alone.
+protobuf>=4.25,<6
 sacremoses>=0.1,<0.2
 numpy>=1.26,<2.0
 pandas>=2.2,<3

@@ -96,6 +96,49 @@ def test_pipeline_returns_sentiment_and_aspects(client):
     assert "aspects" in data
 
 
+def test_pipeline_omitted_absa_model_defaults_to_cnn2d(client):
+    """No absa_model field at all -- older callers must still get the safe
+    default, not a validation error."""
+    if not _bert_available(client):
+        pytest.skip("Fine-tuned BERT artifact not available in this environment.")
+    resp = client.post("/api/v1/sentiment/pipeline", json={"text": "The item arrived broken.", "model_name": "bert"})
+    assert resp.status_code == 200
+    assert "cnn2d" in resp.json()["data"]["aspects"]["model"].lower()
+
+
+def test_pipeline_explicit_cnn2d_absa_model(client):
+    if not _bert_available(client):
+        pytest.skip("Fine-tuned BERT artifact not available in this environment.")
+    resp = client.post("/api/v1/sentiment/pipeline", json={"text": "The item arrived broken.", "model_name": "bert", "absa_model": "cnn2d"})
+    assert resp.status_code == 200
+    assert "cnn2d" in resp.json()["data"]["aspects"]["model"].lower()
+
+
+def test_pipeline_invalid_absa_model_rejected(client):
+    resp = client.post("/api/v1/sentiment/pipeline", json={"text": "The item arrived broken.", "model_name": "bert", "absa_model": "fake_review_model"})
+    assert resp.status_code == 422
+
+
+def test_pipeline_deberta_absa_model_degrades_gracefully_without_download(client, monkeypatch):
+    """Mocks the DeBERTa loader so this never triggers a real ~738MB
+    download -- confirms the live API surfaces a controlled unavailable
+    result end-to-end, never a crash, and never a fake-review-style field."""
+    if not _bert_available(client):
+        pytest.skip("Fine-tuned BERT artifact not available in this environment.")
+
+    def _boom(device=-1):
+        raise OSError("mocked: no network access in test")
+
+    monkeypatch.setattr("app.ml.absa.load_deberta_absa_pipeline", _boom)
+
+    resp = client.post("/api/v1/sentiment/pipeline", json={"text": "The item arrived broken.", "model_name": "bert", "absa_model": "deberta"})
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["aspects"]["available"] is False
+    assert "fake_check" not in data
+    assert "fake_review_summary" not in data
+
+
 def test_explain_requires_nonempty_text(client):
     resp = client.post("/api/v1/sentiment/explain", json={"text": "   "})
     assert resp.status_code == 422

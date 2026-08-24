@@ -10,3 +10,12 @@ export const LANGUAGE_OPTIONS = [
   { value: "en", label: "English" },
   { value: "pt", label: "Portuguese" },
 ] as const;
+
+// CNN2D first and selected by default: it's the always-loaded, no-extra-memory
+// path. DeBERTa is an optional, purpose-trained ABSA checkpoint -- slower to
+// first-respond (lazy-loaded, ~738MB) but not claimed to be more accurate here;
+// this project hasn't benchmarked either against Olist-specific ground truth.
+export const ABSA_MODEL_OPTIONS = [
+  { value: "cnn2d", label: "RAKE + CNN2D — Fast/Light" },
+  { value: "deberta", label: "DeBERTa-v3 ABSA — Specialized/Slower" },
+] as const;

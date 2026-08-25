@@ -1,6 +1,6 @@
 # Artifact Audit
 
-Source project: `C:\Users\User1\Downloads\Fake news\update-20260731T143927Z-1-001\update`
+Source project: a machine-local `update-20260731T143927Z-1-001/update` folder (path redacted — machine-specific, not part of this repository)
 Inspected: 2026-08-04. All files below were recursively discovered and, where a genuine artifact, loaded and validated (not assumed valid by filename).
 
 ## 1. Complete file inventory (source folder)
@@ -63,7 +63,7 @@ Cell 150 contains `MODEL_NAME = "PUT_YOUR_MODEL_HASH_HERE"` and an unrelated fak
 
 ## 7. Raw dataset availability
 
-The 9 raw Olist CSVs are **not present** in the originally uploaded `update/` folder, but WERE located at `Fake news/E-commerce/Dataset/` — the exact directory the notebook's own `MANUAL_BASE_PATH` hard-coded (`r"C:\Users\User1\Downloads\Fake news\E-commerce\Dataset"`), confirming this is genuinely the source data the notebook was built against. All 9 files pass `data_loading.validate_olist_schema()` with zero missing columns. They are included in this delivery under `data/raw/`, and `data/processed/*.parquet` + every `results/*.json` file were regenerated for real from them via `run_pipeline.py --clean --eda --segment` — not derived from the notebook's own already-lossy export. This surfaced two real bugs (both fixed, both regression-tested):
+The 9 raw Olist CSVs are **not present** in the originally uploaded `update/` folder, but WERE located in a separate `E-commerce/Dataset/` folder on the source machine — the exact relative location the notebook's own `MANUAL_BASE_PATH` hard-coded (path redacted here; see `notebooks/archive/olist_full_eda_preprocessing_PYTORCH.ipynb` for the original literal value), confirming this is genuinely the source data the notebook was built against. All 9 files pass `data_loading.validate_olist_schema()` with zero missing columns. They are included in this delivery under `data/raw/`, and `data/processed/*.parquet` + every `results/*.json` file were regenerated for real from them via `run_pipeline.py --clean --eda --segment` — not derived from the notebook's own already-lossy export. This surfaced two real bugs (both fixed, both regression-tested):
 
 1. **`build_reviews_enriched` crashed on genuine raw data**: the raw reviews CSV has 827 duplicate `review_id` rows (invisible to the notebook's own exact-full-row duplicate check). Fixed by deduplicating on `review_id` before the uniqueness assertion.
 2. **Order-status undercounting via the item-join path**: 775 orders have no matching `order_items` row and were silently dropped by the notebook's `dropna(subset=["product_id"])`, disproportionately hiding `canceled`/`unavailable` orders (true count 625/609 vs. the item-joined path's 461/6). `orders_enriched` — built without ever joining through `items` — does not have this blind spot. Full detail: `DATA_GRAIN_AUDIT.md` §5–6.
@@ -83,7 +83,7 @@ The 9 raw Olist CSVs are **not present** in the originally uploaded `update/` fo
 
 | Item | Status |
 |---|---|
-| Raw 9 Olist CSVs | **Present** under `data/raw/` (located at `Fake news/E-commerce/Dataset/`); `run_pipeline.py --clean --eda --segment` has been run against them for real in this delivery |
+| Raw 9 Olist CSVs | **Present** under `data/raw/` (originally located in a separate, machine-local `E-commerce/Dataset/` folder — see §7); `run_pipeline.py --clean --eda --segment` has been run against them for real in this delivery |
 | Retraining BERT/CNN2D on the corrected split | Not run in this delivery (would take ~30+ min CPU for BERT); `train.py` implements it and is ready to run |
 | SHAP explainability | `shap` package not installed in the verification environment; `explainability.py` degrades gracefully and reports `available: false` rather than crashing — install `shap` to enable |
 | ABSA module | Requires downloading an external HF model (`yangheng/deberta-v3-base-absa-v1.1`); not downloaded in this delivery (`ALLOW_EXTERNAL_MODEL_DOWNLOADS=false` by default) |

@@ -60,7 +60,7 @@ Every join is validated with `feature_engineering.check_join_cardinality()`, whi
 
 ## 4. Data provenance note
 
-The raw 9 Olist CSVs were not present in the originally uploaded `update/` folder, but were subsequently located at `Fake news/E-commerce/Dataset/` — the exact path the notebook's own `MANUAL_BASE_PATH` hard-coded. They are included in this delivery under `data/raw/`, and `data/processed/*.parquet` was regenerated for real from them via `run_pipeline.py --data-dir data/raw --clean` (using `data_loading.py` + `feature_engineering.py`'s raw-table functions directly — not derived from the notebook's own export).
+The raw 9 Olist CSVs were not present in the originally uploaded `update/` folder, but were subsequently located in a separate, machine-local `E-commerce/Dataset/` folder — the exact relative location the notebook's own `MANUAL_BASE_PATH` hard-coded (path redacted; see `docs/architecture/ARTIFACT_AUDIT.md` §7). They are included in this delivery under `data/raw/`, and `data/processed/*.parquet` was regenerated for real from them via `run_pipeline.py --data-dir data/raw --clean` (using `data_loading.py` + `feature_engineering.py`'s raw-table functions directly — not derived from the notebook's own export).
 
 ## 5. A second, more complete finding from running on genuine raw source
 

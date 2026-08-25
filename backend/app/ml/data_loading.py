@@ -1,9 +1,9 @@
 """Raw Olist CSV discovery and loading.
 
 Extracted from notebook cells 9 (`resolve_dataset_path`) and 17 (the manual
-9-CSV load). The original notebook had a machine-specific hard-coded path:
-
-    MANUAL_BASE_PATH = r"C:\\Users\\User1\\Downloads\\Fake news\\E-commerce\\Dataset"
+9-CSV load). The original notebook had a machine-specific hard-coded
+`MANUAL_BASE_PATH` pointing at a folder on the source machine (see
+docs/architecture/ARTIFACT_AUDIT.md §7 for the historical record).
 
 That path does not exist in this environment and is intentionally NOT
 reproduced here. `resolve_dataset_path` instead checks (in order): an

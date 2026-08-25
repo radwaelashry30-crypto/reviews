@@ -1,0 +1,21 @@
+[project]
+name = "baseera-marketplace-analytics"
+version = "1.0.0"
+description = "Olist marketplace analytics and customer-review sentiment intelligence platform (FastAPI backend, React frontend, PyTorch sentiment/ABSA pipeline)"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "Unlicensed -- see README.md 'Licence' section" }
+
+# This project is a deployed FastAPI + React application, not a standalone
+# Python package -- see docs/architecture/PROJECT_STRUCTURE.md for why there
+# is no src/ package here. This file exists for repo-root tooling
+# configuration (pytest below) and metadata, not for `pip install`/publishing.
+# Runtime dependencies: backend/requirements.txt (application) and
+# requirements-notebook.txt (notebook). Frontend: frontend/package.json.
+
+[tool.pytest.ini_options]
+# Repository-level structural tests only (tests/) -- the backend's own
+# application test suite (backend/app/tests/) is run separately via
+# `cd backend && pytest` and uses its own backend/pytest.ini.
+testpaths = ["tests"]
+python_files = "test_*.py"

@@ -1,0 +1,84 @@
+# Dependencies for notebooks/Baseera_Main_Notebook_Final.ipynb (Google Colab & local).
+#
+# ONE internally consistent, self-contained set of this notebook's DIRECT
+# dependencies -- both what the notebook's own EDA/preprocessing/modeling
+# cells import directly (numpy, pandas, pyarrow, scikit-learn, torch,
+# transformers, sentencepiece, sacremoses, matplotlib, plotly, seaborn,
+# wordcloud, shap, kaggle, jupyter/ipywidgets) AND what the Appendix needs
+# transitively by importing backend.app modules directly (fastapi's stack,
+# sqlalchemy/alembic/psycopg, slowapi, etc.) -- included here rather than via
+# `-r backend/requirements.txt` so this file alone fully describes what a
+# clean venv needs, with no external file lookup.
+#
+# Exact versions below were RESOLVED, not guessed: pip was given the same
+# range constraints as backend/requirements.txt (the project's own
+# authoritative pins -- see that file for the reasoning behind each bound,
+# e.g. the fastapi/pydantic combination, the torch<2.6 CVE-2025-32434 note)
+# against live PyPI metadata in a clean, isolated venv
+# (Python 3.11.0, `pip install -r <ranges> --extra-index-url
+# https://download.pytorch.org/whl/cpu`), then captured via `pip freeze`.
+# `pip check` on the result: "No broken requirements found."
+#
+# The three constraints this project depends on for stability are ENFORCED
+# here, not just documented -- see NOTEBOOK_VALIDATION_REPORT.md for the
+# evidence (a pandas>=3 / numpy>=2.0 / pyarrow>=18 combination was found to
+# cause an intermittent native crash on at least one validation machine):
+#   pandas<3      -> pinned to 2.3.3
+#   numpy<2.0     -> pinned to 1.26.4
+#   pyarrow<18    -> pinned to 17.0.0
+#
+# torch is pinned to the CPU build (`+cpu`, via --extra-index-url below) --
+# matching backend/Dockerfile's own choice ("this app never touches a GPU in
+# production"); a CUDA-enabled build works too (this project's models were
+# also verified working under torch==2.5.1+cu124) but is not required for
+# either the analysis or the smoke test.
+#
+# NLTK is NOT included: grepped for `nltk` across the entire authoritative
+# notebook -- zero references. Its own tokenization (SimpleVocabTokenizer)
+# and stopword handling (a hand-written Portuguese set for the word cloud)
+# are self-contained; adding NLTK would be an unused dependency.
+#
+# Installed with:
+#   pip install -r requirements-notebook.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+# --- Backend stack (needed transitively: the Appendix imports backend.app.*) ---
+fastapi==0.141.1
+uvicorn[standard]==0.34.3
+pydantic==2.13.4
+pydantic-settings==2.2.1
+python-multipart==0.0.32
+openpyxl==3.1.5
+slowapi==0.1.10
+sqlalchemy==2.0.52
+alembic==1.13.3
+psycopg[binary]==3.2.13
+
+# --- Core numerical / dataframe stack (the 3 pins this project depends on for stability) ---
+numpy==1.26.4
+pandas==2.3.3
+pyarrow==17.0.0
+scikit-learn==1.5.2
+scipy==1.13.1
+joblib==1.4.2
+
+# --- Deep learning / NLP (BERT + CNN2D + translation) ---
+torch==2.5.1
+transformers==4.46.3
+tokenizers==0.20.3
+sentencepiece==0.2.2
+sacremoses==0.1.1
+protobuf==5.29.6
+shap==0.46.0
+
+# --- EDA / visualization ---
+matplotlib==3.9.4
+plotly==5.24.1
+seaborn==0.13.2
+wordcloud==1.9.6
+
+# --- Dataset acquisition (Section 0.6) ---
+kaggle==1.8.4
+
+# --- Local execution only (both preinstalled on Google Colab) ---
+jupyter==1.1.1
+ipywidgets==8.1.9

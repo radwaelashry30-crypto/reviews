@@ -18,6 +18,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.rate_limit import register_rate_limiter
 from app.repositories.analytics_repository import AnalyticsRepository
+from app.services.marketplace_analytics_cache import MarketplaceAnalyticsCache
 from app.services.model_registry import ModelRegistry
 
 configure_logging()
@@ -106,6 +107,16 @@ async def lifespan(app: FastAPI):
         _run_pending_migrations()
     else:
         logger.info("Database: not configured (predictions/uploads persist locally only)")
+
+    # Bounded: reads a handful of small JSONB rows for the currently-active
+    # marketplace version (if any), NOT a rebuild from raw canonical rows --
+    # same cost class as AnalyticsRepository.load_all() just above. Never
+    # blocks /health: this only affects marketplace_cache.readiness_report(),
+    # exposed separately via GET /ready. See Checkpoint B correction #6.
+    marketplace_cache = MarketplaceAnalyticsCache()
+    marketplace_cache.load_active()
+    app.state.marketplace_cache = marketplace_cache
+    logger.info("Marketplace analytics cache: %s", marketplace_cache.readiness_report())
 
     yield
 

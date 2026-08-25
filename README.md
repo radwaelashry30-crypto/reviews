@@ -1,30 +1,49 @@
-# Olist Marketplace Analytics and Customer Sentiment Intelligence Platform
+# Baseera — Olist Marketplace Analytics and Customer Sentiment Intelligence
 
-An interactive analytics dashboard and review-sentiment classifier built on a fixed, static Olist Brazilian e-commerce research dataset (2016-2018) — a FastAPI backend, a React/TypeScript frontend, and the full ML pipeline extracted and corrected from the original research notebook. No live/streaming data source or scheduled refresh pipeline; every chart and prediction runs against the same processed snapshot (`data/processed/*.parquet`) or a request-time model call, not a live feed.
+An academic and business analytics platform: a FastAPI backend, a React/TypeScript
+frontend, and a PyTorch sentiment/explainability pipeline, all built on the public
+[Olist Brazilian E-Commerce dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+(2016–2018). **This is demonstrated using a public research dataset, not client-owned
+data** — every chart and prediction runs against a fixed, static processed snapshot
+(`data/processed/*.parquet`) or a request-time model call; there is no live/streaming
+data source or scheduled refresh pipeline.
 
-> **New here? Two documents summarize the whole project:**
-> - [`PROJECT_JOURNEY.md`](PROJECT_JOURNEY.md) ([PDF](PROJECT_JOURNEY.pdf)) — every phase of work, every problem found, and the actual fix applied and verified for each, in chronological order (technical-review phases, CI/CD, Docker hardening, and three real production incidents caught live).
-> - [`Baseera_Project_Walkthrough.ipynb`](Baseera_Project_Walkthrough.ipynb) — a runnable, step-by-step notebook covering the whole pipeline from raw data upload to live deployment, with real code and real numbers.
+> **New here?**
+> - [`docs/academic/PROJECT_JOURNEY.md`](docs/academic/PROJECT_JOURNEY.md) ([PDF](docs/academic/PROJECT_JOURNEY.pdf)) — every phase of work, every problem found, and the fix applied and verified for each, in chronological order.
+> - [`notebooks/Baseera_Main_Notebook_Final.ipynb`](notebooks/Baseera_Main_Notebook_Final.ipynb) — the current, portability-tested notebook: Colab/local runtime detection, dependency-compatibility bootstrap, Kaggle dataset acquisition, an optional smoke-test mode, and the full EDA → preprocessing → modelling → evaluation → explainability pipeline. See [`docs/notebook/NOTEBOOK_RUN_GUIDE.md`](docs/notebook/NOTEBOOK_RUN_GUIDE.md).
 
-## 1. Overview
+## Contents
 
-This project turns a single 151-cell research notebook into a modular, testable, deployable application with:
-- A relational data-engineering pipeline (9 raw tables → grain-correct enriched datasets)
-- Business KPI generation and RFM customer segmentation
-- Binary review-sentiment classification (BERT and CNN2D, both genuinely trained and verified)
-- A FastAPI backend serving all of the above
-- A React + TypeScript dashboard/inference frontend
-- Full data-leakage, data-grain, and model-comparison audits with corrected numbers
+1. [Scope](#1-scope) · 2. [Business problem](#2-business-problem) · 3. [Dataset](#3-dataset) · 4. [Architecture overview](#4-architecture-overview) · 5. [Repository structure](#5-repository-structure) · 6. [Installation](#6-installation) · 7. [Running the notebook](#7-running-the-notebook-local--colab) · 8. [Backend](#8-backend) · 9. [Frontend](#9-frontend) · 10. [Full application launch](#10-full-application-launch) · 11. [Smoke-test mode](#11-smoke-test-mode) · 12. [Models and artefacts](#12-models-and-artefacts) · 13. [Environment variables](#13-environment-variables) · 14. [Testing](#14-testing) · 15. [Deployment](#15-deployment) · 16. [Academic documentation](#16-academic-documentation) · 17. [Presentation](#17-presentation) · 18. [Limitations](#18-limitations) · 19. [Responsible AI](#19-responsible-ai) · 20. [Licence](#20-licence) · 21. [Contributors](#21-contributors)
+
+## 1. Scope
+
+- **Sentiment classification** — binary Positive/Negative review sentiment (BERT and a from-scratch CNN2D, both genuinely trained and verified).
+- **Aspect-based sentiment analysis (ABSA)** — sentiment-given-aspect across delivery, product quality, price, customer service, and packaging.
+- **Explainable AI** — SHAP token-level explanations for individual predictions.
+- **Business review analytics** — KPIs, RFM customer segmentation, delivery/payment/geography breakdowns, backed by a grain-correct relational data pipeline.
+
+This project intentionally does **not** include fake-review/authenticity detection or
+recommendation-system functionality — both were evaluated during earlier project phases
+and removed; see `docs/academic/PROJECT_JOURNEY.md` and `CHANGELOG.md` for the history,
+and do not reintroduce them.
 
 ## 2. Business problem
 
-Olist is a Brazilian e-commerce marketplace. This project answers: how is the marketplace performing (orders, revenue, delivery, payments), which customers/sellers/categories need attention, and can a review's text alone flag its sentiment automatically instead of waiting on the star rating?
+Olist is a Brazilian e-commerce marketplace. This project answers: how is the
+marketplace performing (orders, revenue, delivery, payments), which
+customers/sellers/categories need attention, and can a review's text alone flag its
+sentiment automatically instead of waiting on the star rating?
 
 ## 3. Dataset
 
-[Olist Brazilian E-Commerce dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — 9 relational CSVs: orders, customers, order items, payments, reviews, products, sellers, geolocation, category translation. See `data/README.md` for schemas and placement.
-
-## 4. Relational data model
+[Olist Brazilian E-Commerce dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+(Kaggle identifier `olistbr/brazilian-ecommerce`, licensed CC BY-NC-SA 4.0) — 9
+relational CSVs: orders, customers, order items, payments, reviews, products, sellers,
+geolocation, category translation. This is a **public research dataset used for
+demonstration purposes — it is not client-owned data**, and this project's derived
+models/datasets inherit its non-commercial, share-alike, attribution-required licence.
+See [`data/README.md`](data/README.md) for schemas, required filenames, and placement.
 
 ```
 orders --(customer_id)--> customers
@@ -33,135 +52,129 @@ order_items --(seller_id)--> sellers
 orders --(order_id, aggregated 1:1)--> payments_summary, review_summary
 ```
 
-## 5. Data-quality process
+**Data-quality process**: 261,831 duplicate geolocation rows removed; missing delivery
+dates deliberately kept as `NaT` (never fabricated) for cancelled/undelivered orders;
+missing review text filled with an explicit `'No Message'` sentinel; price outliers
+flagged (IQR), never silently dropped. Full detail:
+[`docs/architecture/DATA_QUALITY_AUDIT.md`](docs/architecture/DATA_QUALITY_AUDIT.md).
 
-See `DATA_QUALITY_AUDIT.md`. Highlights: 261,831 duplicate geolocation rows removed; missing delivery dates deliberately kept as `NaT` (never fabricated) for canceled/undelivered orders; missing review text filled with an explicit `'No Message'` sentinel that doubles as the sentiment task's exclusion filter; price outliers flagged (IQR), never silently dropped.
+**Data-grain audit (critical)**: the original notebook's single merged dataframe is at
+**order-item grain** (112,650 rows, 98,666 unique orders — a 14.2% inflation on any
+row-count KPI). This project provides grain-correct canonical datasets
+(`orders_enriched`, `order_items_enriched`, `reviews_enriched`, `customers_enriched`,
+`sellers_enriched`) and uses the right one for every KPI. Full detail:
+[`docs/architecture/DATA_GRAIN_AUDIT.md`](docs/architecture/DATA_GRAIN_AUDIT.md).
 
-## 6. Data-grain audit (critical)
+## 4. Architecture overview
 
-The notebook's single merged dataframe is at **order-item grain** (112,650 rows, 98,666 unique orders — a 14.2% inflation on any row-count KPI). This project provides grain-correct canonical datasets (`orders_enriched`, `order_items_enriched`, `reviews_enriched`, `customers_enriched`, `sellers_enriched`) and uses the right one for every KPI. Full detail: `DATA_GRAIN_AUDIT.md`.
+A relational data-engineering pipeline (9 raw tables → grain-correct enriched
+datasets) feeds business KPIs, RFM segmentation, and the sentiment/ABSA models. A
+FastAPI backend serves everything through a layered design
+(`api` → `services` → `ml`/`repositories`), and a React + TypeScript frontend
+consumes it. See [`docs/architecture/PROJECT_STRUCTURE.md`](docs/architecture/PROJECT_STRUCTURE.md)
+for the full rationale, including why the ML pipeline lives inside
+`backend/app/ml/` (one import path for API, tests, scripts, and the notebook) rather
+than a separate top-level `src/` package.
 
-## 7. Feature engineering
+**Models**: BERT (fine-tuned `LiYuan/amazon-review-sentiment-analysis`,
+multilingual, `epochs=3`, `lr=2e-5`, seed 42) and CNN2D (from-scratch PyTorch,
+multi-branch n-gram convolution, `epochs=10`, `lr=1e-3`, seed 42) — both trained on
+the identical, deduplicated, leak-free split (see
+[`docs/architecture/DATA_LEAKAGE_AUDIT.md`](docs/architecture/DATA_LEAKAGE_AUDIT.md)
+and [`docs/architecture/MODEL_COMPARISON_AUDIT.md`](docs/architecture/MODEL_COMPARISON_AUDIT.md)
+for why a fair, identical-split comparison mattered). Verified, reproduced metrics on
+the corrected 6,297-row test set:
 
-`delivery_days`, `delivery_delay_days`, `is_late_delivery`, `order_hour`/`order_day`/`order_year_month`, `is_price_outlier` (IQR), `customer_order_count`, `seller_late_delivery_rate`, `delay_bucket`. Documented per-grain in `backend/app/ml/feature_engineering.py`.
-
-## 8. EDA
-
-`backend/app/ml/eda.py` / `run_eda.py`: order-status distribution, monthly order/revenue trend, top cities/categories, review-score distribution, peak-hour heatmap, delivery-time distribution and late-delivery rate by state/seller, payment/installment distribution, Spearman correlation, and a Welch's t-test + Mann-Whitney U significance test confirming late delivery significantly lowers review scores (p ≈ 0).
-
-## 9. Customer segmentation
-
-RFM (Recency/Frequency/Monetary) + K-Means (k=4, seed=42, n_init=10), with Frequency/Monetary computed correctly at order grain (not inflated by item count). Segment names (`Champion`/`Loyal Customer`/`Potential Loyal`/`At Risk`) are derived from each cluster's own mean Monetary rank, not hard-coded to a cluster id. See `backend/app/ml/segmentation.py`, `results/rfm_segments.json`.
-
-## 10. Sentiment classification task
-
-Binary: **1-2 stars → Negative (0), 4-5 stars → Positive (1)**. 3-star reviews and reviews with no written text are excluded. Predictions are probabilistic and dataset-dependent, not objective truth.
-
-## 11. BERT model
-
-Fine-tuned from `LiYuan/amazon-review-sentiment-analysis` (`bert-base-multilingual-uncased` architecture — verified NOT DistilBERT), `AutoModelForSequenceClassification`, `num_labels=2`. `max_len=128`, `batch_size=8`, `epochs=3`, `lr=2e-5`, `weight_decay=0.01`, linear warmup (10%) + decay, gradient clipping at 1.0, early stopping (patience 2), seed 42. Artifact: `models/bert_review_sentiment/` (verified genuine `save_pretrained()` output).
-
-## 12. CNN2D model
-
-`CNN2DReviewSentiment` (PyTorch, from scratch): `Embedding(30000,100,pad_idx=0)` → 4 parallel `Conv2D` branches (filter sizes 2/3/4/5, 32 filters each) → `BatchNorm2d` → `ReLU` → adaptive global max-pool → concat → `Dropout(0.5)` → `Linear(128,32)` → `ReLU` → `Dropout(0.5)` → `Linear(32,1)` (raw logit). `SimpleVocabTokenizer` (custom, frequency-capped, 0=pad/1=OOV), `max_len=100`. `batch_size=64`, `epochs=10`, `lr=1e-3`, `weight_decay=1e-3`, label smoothing 0.1, `ReduceLROnPlateau`, early stopping (patience 3), seed 42. **Verified**: `strict=True` state-dict load succeeds, 3,049,345 trainable parameters.
-
-## 13. Notebook-reported metrics (NOT leakage-free — see §15)
-
-| | BERT (n=2,000) | CNN2D (n=7,613) |
+| | BERT | CNN2D |
 |---|---|---|
-| Accuracy | 0.9275 | 0.9192 |
-| F1 (macro) | 0.9134 | 0.9074 |
-| ROC-AUC | 0.9716 | 0.9717 |
-| MCC | 0.8270 | 0.8190 |
+| Accuracy | 0.9370 | 0.9201 |
+| F1 (macro) | 0.9303 | 0.9127 |
+| ROC-AUC | 0.9797 | 0.9676 |
+| MCC | 0.8611 | 0.8276 |
 
-Stored verbatim in `results/notebook_reported_metrics.json`.
+Full architecture and hyperparameter detail:
+[`docs/academic/MODEL_CARD.md`](docs/academic/MODEL_CARD.md). Reproduced numbers:
+`results/reproduced_metrics.json`; regenerate after any retraining with
+`cd backend && python scripts/regenerate_metrics.py` — never hand-edit these files.
 
-## 14. Reproduced metrics (corrected split, real forward-pass evaluation)
-
-| | BERT (n=6,297) | CNN2D (n=6,297) |
-|---|---|---|
-| Accuracy | **0.9370** | 0.9201 |
-| F1 (macro) | **0.9303** | 0.9127 |
-| ROC-AUC | **0.9797** | 0.9676 |
-| MCC | **0.8611** | 0.8276 |
-
-Both evaluated on the IDENTICAL corrected/deduplicated test split — see `results/reproduced_metrics.json`, `results/fair_model_comparison.json`. BERT wins on every metric here. Regenerate these numbers after any retraining with `cd backend && python scripts/regenerate_metrics.py` — never hand-edit this table; a previous version of it went stale relative to the shipped checkpoint (see `CHANGELOG.md`).
-
-## 15. Leakage warning
-
-The notebook's original split leaked 1,097 duplicate review texts across train/val/test (verified from its own captured output) and never regenerated `X_train`/`X_val`/`X_test` after deduplicating in a later cell. Full detail and the corrected pipeline: `DATA_LEAKAGE_AUDIT.md`.
-
-## 16. Fair-comparison methodology
-
-The notebook compared BERT on a 2,000-row subsample against CNN2D on the full 7,613-row split — different populations, different sizes. This project's fair-comparison mode evaluates both on the same 6,297-row corrected test set. Full detail: `MODEL_COMPARISON_AUDIT.md`.
-
-## 17. Explainable AI
-
-SHAP `PartitionExplainer` over the fine-tuned BERT pipeline, sample size 8 (configurable), explaining rows drawn from the stored split manifest only. `backend/app/ml/explainability.py`; degrades gracefully (reports `available: false`) if `shap` isn't installed rather than crashing.
-
-## 18. ABSA module
-
-Sentiment-given-aspect (not extraction) over {delivery, product quality, price, customer service, packaging}. Previously `yangheng/deberta-v3-base-absa-v1.1` (~738MB) — replaced after evaluating and rejecting two smaller external alternatives: a SetFit-based model whose `sentence-transformers` dependency pulled in a full TensorFlow install (a net size INCREASE despite smaller model weights, confirmed by actually installing it), and several small DistilBERT-based models on the Hub with single-digit download counts and no independent verification. Now runs on CNN2D (already loaded for Task 1) scoring the RAKE-located clause discussing each aspect — zero additional model weights, zero new dependencies. Honest tradeoff: no "Neutral" class (CNN2D is binary), and clause-level sentiment approximates aspect-level sentiment rather than a purpose-trained model. `backend/app/ml/absa.py`, `backend/app/ml/aspect_extraction.py`.
-
-## 19. Backend architecture
-
-FastAPI, layered: `api/v1/endpoints` (HTTP) → `services` (business logic, no FastAPI imports) → `ml` (pure ML/data code) + `repositories` (cached data access, plus the optional DB-backed `sentiment_repository.py`/`batch_repository.py`). `ModelRegistry` loads every optional artifact once at startup (`app/main.py` lifespan) and never reloads per request. See `API_DOCUMENTATION.md`.
-
-Optional relational persistence (sentiment-analysis history, feedback, durable batch-upload records) via SQLAlchemy + Alembic — entirely opt-in, set `DATABASE_URL` to enable it. See `DATABASE_SETUP.md`.
-
-## 20. Frontend architecture
-
-Vite + React + TypeScript + React Router. `src/api/` centralizes all HTTP calls; `src/types/` mirrors backend Pydantic schemas field-for-field; `src/hooks/` wraps loading/error state; `src/pages/` + `src/components/` are pure presentation — no ML logic in the frontend. See `FRONTEND_INTEGRATION.md`.
-
-## 21. API endpoints
-
-`/api/v1/health`, `/models/status`, `/models/info`, `/sentiment/predict[-batch]`, `/analytics/summary|orders/monthly|revenue/monthly|reviews/distribution|delivery/summary|payments/distribution`, `/customers/summary|top-cities|segments[/{name}]`, `/sellers/summary|performance`, `/products/categories|category-performance`, `/geography/state-performance`, `/segmentation/rfm-summary`, `/segmentation/predict`. Full detail: `API_DOCUMENTATION.md`.
-
-## 22. Folder structure
+## 5. Repository structure
 
 ```
-Olist_Marketplace_Platform/
-├── README.md, requirements.txt, .gitignore, .env.example, docker-compose.yml, Makefile
-├── PROJECT_JOURNEY.md, PROJECT_JOURNEY.pdf, Baseera_Project_Walkthrough.ipynb   # full project history + walkthrough
-├── ARTIFACT_AUDIT.md, DATA_QUALITY_AUDIT.md, DATA_LEAKAGE_AUDIT.md, DATA_GRAIN_AUDIT.md, MODEL_COMPARISON_AUDIT.md
-├── API_DOCUMENTATION.md, FRONTEND_INTEGRATION.md
-├── backend/            # FastAPI app + ML code + scripts + tests
-├── frontend/            # Vite + React + TS starter
-├── shared/               # API contract, label mapping, model manifest, example responses
-├── models/                # bert_review_sentiment/, cnn2d_review_sentiment.pt
-├── artifacts/              # tokenizers, split manifest, RFM scaler/kmeans, manifests
-├── config/                  # project/bert/cnn2d config JSON
-├── data/                      # raw/ (empty, see data/README.md), interim/, processed/
-├── output/                      # legacy order-item-grain export (notebook reproduction only)
-├── results/                      # KPIs, metrics, audits' machine-readable backing data
-├── figures/                        # EDA/model/SHAP/segmentation figures
-├── notebooks/                       # original notebook (preserved)
-├── reports/                          # executive_analytics_report.md
-└── original_project_backup/           # everything from the uploaded folder, preserved as-is
+baseera-marketplace-analytics/
+├── backend/              FastAPI app: API, ML pipeline (app/ml/), services, tests, migrations, scripts
+├── frontend/             React + TypeScript dashboard/inference UI (Vite, Vitest)
+├── notebooks/
+│   ├── Baseera_Main_Notebook_Final.ipynb   the current, portable, validated notebook
+│   └── archive/                             historical notebooks — see notebooks/archive/README.md
+├── models/                bert_review_sentiment/, cnn2d_review_sentiment.pt — see models/README.md
+├── artifacts/              fitted tokenisers, scalers, manifests — see artifacts/README.md
+├── data/                    raw/ (gitignored, see data/README.md), interim/, processed/, sample/
+├── shared/                   cross-stack contract: api_contract.json, label_mapping.json, model_manifest.json
+├── config/                    training/inference hyperparameters and paths (JSON)
+├── results/                    generated metrics, confusion matrices, audits — regenerable, never hand-edited
+├── reports/                     executive_analytics_report.md — business-facing summary
+├── figures/                      saved EDA/model/SHAP/segmentation plots
+├── docs/
+│   ├── notebook/                  NOTEBOOK_RUN_GUIDE.md, NOTEBOOK_VALIDATION_REPORT.md
+│   ├── academic/                   PROJECT_JOURNEY.md/.pdf, MODEL_CARD.md
+│   └── architecture/                 PROJECT_STRUCTURE.md, API_DOCUMENTATION.md, all audits, DEPLOYMENT.md, TESTING.md, ...
+├── tests/                          repository-level structural tests (see backend/app/tests/ for the application suite)
+├── output/                          legacy order-item-grain export (original notebook reproduction only)
+├── .github/workflows/                CI: backend tests, frontend typecheck/test/build, Docker build+boot
+├── README.md, CHANGELOG.md, pyproject.toml, requirements.txt, requirements-notebook.txt
+├── run_project.bat / run_project.sh    local launcher (Windows / macOS-Linux)
+└── docker-compose.yml, .env.example, .gitignore, .gitattributes
 ```
 
-## 23. Installation
+## 6. Installation
 
 ```bash
-git clone <this-repo> && cd Olist_Marketplace_Platform
+git clone https://github.com/radwaelashry30-crypto/baseera-marketplace-analytics.git
+cd baseera-marketplace-analytics
 python -m venv .venv
 # Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## 24. Data placement
+The delivered repository already includes `data/interim/reviews_translated.csv` and
+`data/processed/*.parquet`, so the API and frontend work out of the box without
+placing raw CSVs — see [`data/README.md`](data/README.md) if you want to rebuild from
+raw source.
 
-See `data/README.md`. The delivered project already includes `data/interim/reviews_translated.csv` and `data/processed/*.parquet`, so the API and frontend work out of the box without placing raw CSVs.
+## 7. Running the notebook (local & Colab)
 
-## 25. Backend startup
+**Google Colab**: open `notebooks/Baseera_Main_Notebook_Final.ipynb` directly from
+this repository on GitHub, or upload it, then **Runtime → Run all**. A dependency
+bootstrap checks package versions before anything else runs and, on first use, may
+install a compatible numpy/pandas/pyarrow and request one runtime restart — this is
+expected, see [`docs/notebook/NOTEBOOK_RUN_GUIDE.md`](docs/notebook/NOTEBOOK_RUN_GUIDE.md).
+
+**Local**: `pip install -r requirements-notebook.txt --extra-index-url https://download.pytorch.org/whl/cpu`,
+register a Jupyter kernel, then `jupyter notebook notebooks/Baseera_Main_Notebook_Final.ipynb`.
+Full step-by-step instructions, Kaggle authentication, and troubleshooting:
+[`docs/notebook/NOTEBOOK_RUN_GUIDE.md`](docs/notebook/NOTEBOOK_RUN_GUIDE.md). Independent
+validation evidence (dependency resolution, 5/5 clean stability runs, export/artefact
+integrity checks): [`docs/notebook/NOTEBOOK_VALIDATION_REPORT.md`](docs/notebook/NOTEBOOK_VALIDATION_REPORT.md).
+
+## 8. Backend
 
 ```bash
 cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## 26. Frontend startup
+Layered design: `api/v1/endpoints` (HTTP) → `services` (business logic) →
+`ml` (pure ML/data code) + `repositories` (cached/optional-DB-backed data access).
+`ModelRegistry` loads every optional artefact once at startup and never reloads
+per request. Endpoints (health, models, sentiment predict/batch, analytics,
+customers, sellers, products, geography, segmentation): full detail in
+[`docs/architecture/API_DOCUMENTATION.md`](docs/architecture/API_DOCUMENTATION.md).
+Optional relational persistence (sentiment history, feedback, batch-upload records)
+via SQLAlchemy + Alembic — opt-in, set `DATABASE_URL`; see
+[`docs/architecture/DATABASE_SETUP.md`](docs/architecture/DATABASE_SETUP.md).
+
+## 9. Frontend
 
 ```bash
 cd frontend
@@ -170,111 +183,117 @@ cp .env.example .env
 npm run dev
 ```
 
-## 27. Docker startup
+Vite + React + TypeScript + React Router. `src/api/` centralises HTTP calls;
+`src/types/` mirrors the backend's Pydantic schemas field-for-field (the TypeScript
+side of `shared/api_contract.json`); `src/pages/`/`src/components/` are pure
+presentation. Full detail:
+[`docs/architecture/FRONTEND_INTEGRATION.md`](docs/architecture/FRONTEND_INTEGRATION.md).
+
+## 10. Full application launch
 
 ```bash
-docker compose build
-docker compose up
-docker compose down
+# Windows
+run_project.bat
+# macOS / Linux
+./run_project.sh
 ```
 
-## 28. Translation
+Both scripts resolve the repository root relative to their own location, create
+`.env`/`frontend/.env` from the committed `.example` files if missing, check that
+model weights and `frontend/node_modules` are present, then start the backend and
+frontend together and open the dashboard. Docker, as an alternative:
 
 ```bash
-python backend/scripts/translate_reviews.py --allow-external-downloads
+docker compose build && docker compose up   # docker compose down to stop
 ```
-Reuses `data/interim/reviews_translated.csv` if present; only translates rows that don't already have a translation.
 
-## 29. Full pipeline
+## 11. Smoke-test mode
+
+`notebooks/Baseera_Main_Notebook_Final.ipynb` has an optional
+`BASEERA_SMOKE_TEST` flag (Section 0.7, default `False`) that runs the complete
+pipeline at a tiny scale (subsampled data, 1 epoch per model) purely to verify
+every stage connects end-to-end — data loading, cleaning, feature engineering,
+model construction, training, evaluation, artefact save/load, and inference on a
+real, programmatically-selected Olist review — writing everything to isolated
+`*/smoke_test/` subfolders so it can never overwrite real trained models or
+reported metrics. Verified: 5/5 independent fresh-process runs completed with zero
+failures. See [`docs/notebook/NOTEBOOK_RUN_GUIDE.md`](docs/notebook/NOTEBOOK_RUN_GUIDE.md#smoke-test-mode-baseera_smoke_test).
+
+## 12. Models and artefacts
+
+See [`models/README.md`](models/README.md) and [`artifacts/README.md`](artifacts/README.md)
+for exactly what's shipped, how each file was produced, and how to regenerate or
+retrain if a file is missing. Both `bert_review_sentiment/model.safetensors` (638MB)
+and `cnn2d_review_sentiment.pt` are tracked via **Git LFS** — run `git lfs install`
+before cloning if you don't already have LFS configured.
+
+## 13. Environment variables
+
+See [`.env.example`](.env.example) for the full, documented list (app metadata, CORS
+origins, `ENABLE_BERT`/`ENABLE_CNN2D`/`ENABLE_TRANSLATION` feature flags,
+`MAX_REVIEW_LENGTH`/`MAX_BATCH_SIZE`, `REQUIRE_API_KEY`/`API_KEYS`,
+`TRUSTED_PROXY_HOPS`, optional `DATABASE_URL`). Never commit a populated `.env` —
+only `.env.example` with placeholders is tracked.
+
+## 14. Testing
 
 ```bash
-python backend/scripts/run_pipeline.py --data-dir data/raw --clean --eda --segment
+cd backend && pytest -q          # application test suite (skips cleanly if artefacts are absent)
+cd ../frontend && npm run typecheck && npm run test -- --run && npm run build
+cd .. && pytest -q               # repository-level structural tests (tests/)
 ```
 
-## 30. Training
+## 15. Deployment
 
-```bash
-python backend/scripts/train.py --model bert --epochs 3 --batch-size 8 --learning-rate 2e-5
-python backend/scripts/train.py --model cnn2d --epochs 10 --batch-size 64 --learning-rate 0.001
-```
+Backend: Render (Docker runtime, CPU-only PyTorch wheel, multi-stage `backend/Dockerfile`).
+Frontend: Vercel (static build, `frontend/vercel.json`). CI
+(`.github/workflows/ci.yml`) runs backend tests, frontend typecheck/test/build, and a
+real Docker build-and-boot-and-health-check job on every push/PR. Full detail:
+[`docs/architecture/DEPLOYMENT.md`](docs/architecture/DEPLOYMENT.md).
 
-## 31. Evaluation
+## 16. Academic documentation
 
-```bash
-python backend/scripts/evaluate.py --model bert --model-path models/bert_review_sentiment --split-manifest artifacts/split_manifest.json
-python backend/scripts/evaluate.py --model cnn2d --checkpoint models/cnn2d_review_sentiment.pt --tokenizer artifacts/cnn2d_tokenizer.pkl --split-manifest artifacts/split_manifest.json
-```
+[`docs/academic/PROJECT_JOURNEY.md`](docs/academic/PROJECT_JOURNEY.md) /
+[`.pdf`](docs/academic/PROJECT_JOURNEY.pdf) — chronological record of every phase,
+problem found, and fix applied and verified. [`docs/academic/MODEL_CARD.md`](docs/academic/MODEL_CARD.md) —
+model architecture, training configuration, and evaluation methodology.
+[`reports/executive_analytics_report.md`](reports/executive_analytics_report.md) —
+business-facing summary.
 
-## 32. Inference
+## 17. Presentation
 
-```bash
-python backend/scripts/inference.py --text "The product arrived early and works perfectly." --model bert
-```
+No presentation file is currently tracked in this repository. If one exists outside
+version control, add it under `presentation/` and link it here.
 
-## 33. API examples
-
-See `API_DOCUMENTATION.md` for curl/JS/React examples for every endpoint.
-
-## 34. Testing
-
-```bash
-cd backend
-pytest -q          # 46 tests, all pass when artifacts are present; artifact-dependent tests skip cleanly otherwise
-cd ../frontend
-npm run typecheck
-npm run build
-```
-
-## 35. CPU and GPU notes
-
-Everything runs on CPU (verified: BERT inference ~18ms/review, ~0.35s/batch of 8 on CPU). `get_device()` auto-selects CUDA when available. Install the CUDA build of PyTorch separately (see https://pytorch.org/get-started/locally/) — this project's `requirements.txt` intentionally does not pin a CUDA-specific wheel.
-
-## 36. Reproducibility notes / random seed
-
-Seed **42** everywhere: dataset split, class-weight computation, K-Means, PyTorch/NumPy/Python RNG (`utils.set_seed`). BERT/CNN tokenizers are fit on the TRAIN partition only. The split manifest (`artifacts/split_manifest.json`) stores stable `review_id`/`text_hash` identifiers so evaluation never depends on re-running the split.
-
-## 37. Limitations
+## 18. Limitations
 
 - Sentiment predictions are probabilistic estimates from a specific dataset and time period — not ground truth about customer intent.
-- The dataset covers Jan 2017–Aug 2018 Brazilian e-commerce only; findings may not generalize to other markets or periods.
+- The dataset covers January 2017 – August 2018 Brazilian e-commerce only; findings may not generalise to other markets or periods.
 - ABSA's aspect-presence gate and underlying sentiment model (CNN2D) are both validated on Olist data individually, but clause-level sentiment as a stand-in for aspect-level sentiment is a heuristic approximation, not independently benchmarked as such.
+- Olist's seller/customer base is concentrated in Southeast Brazil; delivery/logistics findings for North/Northeast states rest on comparatively fewer orders.
+- Reviews were machine-translated (MarianMT, `opus-mt-ROMANCE-en`) from Portuguese for some pipeline stages; translation errors can shift sentiment-bearing words.
 
-## 38. Dataset-bias warning
+## 19. Responsible AI
 
-Olist's seller/customer base is concentrated in Southeast Brazil; delivery/logistics findings for North/Northeast states rest on comparatively fewer orders.
+Do not use sentiment predictions to make consequential decisions about individual
+customers or sellers (e.g. account suspension) without human review. Do not present
+the ABSA module's output as validated ground truth. This platform is a demonstration
+built on public research data, not a production customer-management system.
 
-## 39. Translation-quality warning
+## 20. Licence
 
-Reviews were machine-translated (MarianMT, `opus-mt-ROMANCE-en` — see ARTIFACT_AUDIT.md §4) from Portuguese. Translation errors can shift sentiment-bearing words; the CNN/BERT models were trained and evaluated on this translated text, not the original Portuguese.
+**Code**: no licence file is currently included in this repository — the repository
+owner should add one (e.g. MIT) before any public or academic submission that
+requires it. **Dataset**: the Olist data is CC BY-NC-SA 4.0 (Kaggle) — non-commercial,
+share-alike, attribution required; this project's derived models and datasets
+inherit that restriction.
 
-## 40. Responsible-use statement
+## 21. Contributors
 
-Do not use sentiment predictions to make consequential decisions about individual customers or sellers (e.g. account suspension) without human review. Do not present the ABSA module's output as validated ground truth.
+Add contributor and supervisor names here before submission.
 
-## 41. Contributors / Supervisor
+---
 
-Add your name(s) and supervisor here before submission.
-
-## 42. Report
-
-See `reports/executive_analytics_report.md`.
-
-## 43. Git LFS / large files
-
-| Artifact | Size |
-|---|---|
-| `models/bert_review_sentiment/model.safetensors` | 638.4 MB |
-| `models/cnn2d_review_sentiment.pt` | 11.6 MB |
-| `artifacts/cnn2d_tokenizer.pkl` | 105 KB |
-
-The BERT weight file exceeds GitHub's 100MB soft limit. Use Git LFS:
-```bash
-git lfs install
-git lfs track "models/bert_review_sentiment/model.safetensors"
-git add .gitattributes
-```
-The file is preserved in this ZIP regardless of Git LFS setup.
-
-## 44. License
-
-Code: add your preferred license (e.g. MIT). Dataset: Olist data is CC BY-NC-SA 4.0 (Kaggle) — non-commercial, share-alike, attribution required; this project's derived models/datasets inherit that restriction.
+*Large binaries note*: `models/bert_review_sentiment/model.safetensors` exceeds
+GitHub's 100MB soft limit and is tracked via Git LFS (`git lfs install` before
+cloning) — see `.gitattributes`.

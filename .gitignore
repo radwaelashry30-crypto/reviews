@@ -21,6 +21,20 @@ frontend/.vite/
 .env.local
 frontend/.env
 
+# Kaggle API credentials (see notebooks/Baseera_Main_Notebook_Final.ipynb Section 0.6 /
+# docs/notebook/NOTEBOOK_RUN_GUIDE.md) -- normally lives outside the repo at
+# ~/.kaggle/kaggle.json, this only guards against it being placed inside the repo by mistake.
+kaggle.json
+.kaggle/
+
+# BASEERA_SMOKE_TEST=True output (notebooks/Baseera_Main_Notebook_Final.ipynb Section 0.7) --
+# throwaway connectivity-check artifacts under models/artifacts/weights/output, never
+# the real deliverables (those stay directly under models/, artifacts/, etc. as before).
+**/smoke_test/
+
+# Dependency-bootstrap restart marker (Section 0.3) -- transient, local only.
+.baseera_bootstrap_restart_marker
+
 # OS / editor
 .DS_Store
 .vscode/
@@ -36,7 +50,10 @@ frontend/.env
 data/raw/
 data/interim/
 data/uploads/
-notebooks/olist_full_eda_preprocessing_PYTORCH.ipynb
+# Runtime staging area for marketplace CSV imports (backend/app/core/config.py
+# MARKETPLACE_STAGING_DIR) -- transient, same role as data/uploads/ above.
+data/marketplace_staging/
+notebooks/archive/olist_full_eda_preprocessing_PYTORCH.ipynb
 output/
 results/rfm_cluster_summary.csv
 
@@ -57,6 +74,11 @@ original_project_backup/
 /../*.zip
 Olist_Marketplace_Platform.zip
 frontend/*.tsbuildinfo
+# tsc -b output for vite.config.ts (frontend/tsconfig.node.json has no
+# outDir, so `tsc -b` compiles it in place -- these were previously
+# committed by accident; frontend/vite.config.ts is the real source.
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # Local SQLite dev/test database (used only when DATABASE_URL is unset --
 # see DATABASE_SETUP.md). Never a real deployment target.

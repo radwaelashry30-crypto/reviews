@@ -40,7 +40,15 @@ def db_available():
     db_base._SessionLocal = None
 
     engine = create_engine(test_url)
-    Base.metadata.create_all(engine)
+    # Scoped to this module's own tables, not the whole shared Base.metadata:
+    # the marketplace tables (app/db/models.py's Checkpoint C section) use
+    # JSONB and partial/expression indexes that only compile under the
+    # postgresql dialect, so create_all() against SQLite must not attempt
+    # them here -- this module never touches marketplace tables.
+    Base.metadata.create_all(engine, tables=[
+        SentimentAnalysis.__table__, SentimentAnalysisAspect.__table__,
+        PredictionFeedback.__table__, BatchUploadJob.__table__,
+    ])
 
     yield test_url
 

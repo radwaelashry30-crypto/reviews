@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from app.api.v1.endpoints import (
-    analytics, customers, geography, health, models, products, segmentation, sellers, sentiment,
+    analytics, customers, geography, health, marketplace_data, models, products, segmentation, sellers, sentiment,
 )
 from app.core.security import require_api_key
 
@@ -20,3 +20,4 @@ api_router.include_router(sellers.router)
 api_router.include_router(products.router)
 api_router.include_router(geography.router)
 api_router.include_router(segmentation.router)
+api_router.include_router(marketplace_data.router)

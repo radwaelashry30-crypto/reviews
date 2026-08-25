@@ -27,7 +27,7 @@ Expected schemas are validated by `backend/app/ml/data_loading.py::validate_olis
 
 ## Data provenance
 
-The raw 9 CSVs were not present in the originally uploaded project folder (`update-20260731T143927Z-1-001/update`) — only its derived outputs were. They were subsequently located at `Fake news/E-commerce/Dataset/` (the exact directory the notebook's own hard-coded `MANUAL_BASE_PATH` pointed to) and are included in this delivery under `data/raw/`. `data/processed/*.parquet` in this delivery was regenerated for real from these raw CSVs via `run_pipeline.py --clean` (not derived from the notebook's own export) — see `DATA_GRAIN_AUDIT.md` for what changed as a result.
+The raw 9 CSVs were not present in the originally uploaded project folder (`update-20260731T143927Z-1-001/update`) — only its derived outputs were. They were subsequently located in a separate, machine-local `E-commerce/Dataset/` folder (the exact relative location the notebook's own hard-coded `MANUAL_BASE_PATH` pointed to — path redacted here, see `docs/architecture/ARTIFACT_AUDIT.md` §7) and are included in this delivery under `data/raw/`. `data/processed/*.parquet` in this delivery was regenerated for real from these raw CSVs via `run_pipeline.py --clean` (not derived from the notebook's own export) — see `docs/architecture/DATA_GRAIN_AUDIT.md` for what changed as a result.
 
 This project also ships:
 - `data/interim/reviews_translated.csv` — 100,000 reviews with English translations (41,723 non-empty), the genuine output of the notebook's translation step.

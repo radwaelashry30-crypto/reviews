@@ -74,5 +74,47 @@ class Settings(BaseSettings):
     # When unset, upload_store.py falls back to its original local-JSON store.
     DATABASE_URL: str | None = None
 
+    # -- Marketplace CSV data management (Checkpoint C) -----------------
+    # This feature is PostgreSQL-only (partial unique indexes, JSONB,
+    # pg_advisory_xact_lock) -- it requires DATABASE_URL to point at real
+    # Postgres, not the SQLite dev.db fallback used for the sentiment/batch
+    # tables above. See app/db/marketplace_base.py::require_postgres().
+    #
+    # 78,643,200 bytes = 75 MiB hard limit, measured against the real
+    # canonical historical CSV (see Checkpoint B evidence: 150,000 rows
+    # project to ~63.64MB; 75MiB leaves headroom). Enforced independently
+    # from MARKETPLACE_MAX_ROWS -- a file can be rejected for either reason.
+    MARKETPLACE_MAX_UPLOAD_BYTES: int = 78_643_200
+    MARKETPLACE_MAX_ROWS: int = 150_000
+    # An unconfirmed import session (uploaded, mapped, or previewed but not
+    # yet confirmed) expires after this many minutes -- shorter than the
+    # 7-day batch-upload retention above because this holds a *private
+    # preview* of data that may never be confirmed, not a finished result.
+    MARKETPLACE_IMPORT_TTL_MINUTES: int = 60
+    # Total dataset versions retained: the active version + its immediate
+    # rollback target + one older version. See marketplace_version_service.py.
+    MARKETPLACE_VERSION_RETENTION: int = 3
+    # Rows are staged into the database in fixed-size chunks so peak memory
+    # stays roughly constant regardless of file size (see Checkpoint B
+    # evidence: a naive whole-file load measured ~130MB peak projected at
+    # 150,000 rows -- chunking keeps this bounded well under that).
+    MARKETPLACE_CHUNK_ROWS: int = 5_000
+    # Where uploaded CSVs are staged on local disk before/during confirmation
+    # (see marketplace_import_service.save_upload_stream). A dedicated
+    # setting, not a hardcoded `DATA_DIR / "marketplace_staging"` join,  so
+    # tests can point it at an isolated temp directory instead of writing
+    # into the real data/ tree.
+    MARKETPLACE_STAGING_DIR: Path = DATA_DIR / "marketplace_staging"
+    # Non-secret identifier persisted in created_by/actor columns (import
+    # sessions, dataset versions, the audit log) for "who performed this
+    # write". Deliberately NOT the raw admin API key -- see
+    # require_marketplace_admin_key in app/core/security.py, which validates
+    # the real key via secrets.compare_digest but returns this static,
+    # non-secret label instead of the key itself. A single shared admin
+    # credential has no per-caller identity to record anyway, so a stable
+    # label is exactly as informative as the key would have been, without
+    # the DB (or its audit trail) ever holding the secret in plaintext.
+    MARKETPLACE_ADMIN_ACTOR_ID: str = "admin"
+
 
 settings = Settings()

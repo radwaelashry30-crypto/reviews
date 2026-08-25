@@ -6,3 +6,7 @@
 *.csv filter=lfs diff=lfs merge=lfs -text
 *.parquet filter=lfs diff=lfs merge=lfs -text
 *.h5 filter=lfs diff=lfs merge=lfs -text
+
+# Shell scripts must always be stored with LF endings (a CRLF shebang line
+# breaks execution on Linux/macOS) regardless of a checkout's core.autocrlf.
+*.sh text eol=lf

@@ -58,11 +58,11 @@ def main() -> None:
     parser.add_argument("--source", choices=["datafiniti", "polarity"], default="polarity",
                          help="datafiniti = small (~45K rows, capped at 987 negated-negative examples, first attempt). "
                               "polarity = fancyzhx/amazon_polarity (~900K rows/shard, ~300K negated-negative -- second, larger attempt.")
-    parser.add_argument("--amazon-csv", action="append", default=[
-        r"C:\Users\User1\Downloads\Fake news\Spam & no spam\Dataset\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products.csv",
-        r"C:\Users\User1\Downloads\Fake news\Spam & no spam\Dataset\Datafiniti_Amazon_Consumer_Reviews_of_Amazon_Products_May19.csv",
-        r"C:\Users\User1\Downloads\Fake news\Spam & no spam\Dataset\1429_1.csv",
-    ])
+    parser.add_argument("--amazon-csv", action="append", default=[],
+                         help="Path(s) to the Datafiniti Amazon Consumer Reviews CSV(s) "
+                              "(https://www.kaggle.com/datasets/datafiniti/consumer-reviews-of-amazon-products). "
+                              "Required when --source=datafiniti; no default is shipped since this dataset is "
+                              "external and machine-specific to wherever you downloaded it.")
     parser.add_argument("--polarity-parquet", action="append", default=[
         str(Path.home() / ".cache" / "huggingface" / "hub" / "datasets--fancyzhx--amazon_polarity" /
             "snapshots" / "9d9c45c18f8c3cf1b23a3c27917b60cbf28f3289" / "amazon_polarity" / "train-00000-of-00004.parquet"),
@@ -89,6 +89,9 @@ def main() -> None:
         amazon_labeled = load_amazon_polarity_dataset(args.polarity_parquet)
         print(f"Loaded {len(amazon_labeled)} rows from Amazon Polarity (fancyzhx/amazon_polarity)")
     else:
+        if not args.amazon_csv:
+            parser.error("--source=datafiniti requires at least one --amazon-csv path "
+                         "(no default is shipped -- see --help)")
         amazon_raw = load_amazon_reviews(args.amazon_csv)
         amazon_labeled = build_sentiment_labels(amazon_raw)
         print(f"Loaded {len(amazon_labeled)} rows from Datafiniti")
